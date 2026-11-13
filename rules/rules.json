@@ -1,0 +1,36 @@
+{
+ "version": "1.0",
+ "date": "2026-11-13",
+ "note": "Rules of the game (design v1.1, ch. 2, 5, 6 and 7). Any change is logged in rules/changes.md and applies only from then on.",
+ "initial_capital_eur": 100000,
+ "costs": {
+  "commission_eur": 0,
+  "fx": 0.0015,
+  "slippage": 0.0005,
+  "dividend_withholding": 0.15
+ },
+ "portfolio": {
+  "long_only": true,
+  "max_weight_global": 0.2,
+  "weight_tolerance": 0.02,
+  "rebalance_band": 0.02,
+  "min_order_eur": 1.0,
+  "share_decimals": 6
+ },
+ "data": {
+  "min_history_days": 253,
+  "suspicious_jump": 0.25,
+  "missing_days_for_delisting": 5,
+  "market_ma_days": 200,
+  "max_tiingo_difference": 0.02
+ },
+ "metrics": {
+  "trading_days_per_year": 252,
+  "capital_gains_tax": 0.28,
+  "max_drawdown_penalty_from": 0.25,
+  "penalty_per_point": 10,
+  "min_days_for_score": 20,
+  "merit_min_days": 126,
+  "merit_monkey_percentile": 0.95
+ }
+}

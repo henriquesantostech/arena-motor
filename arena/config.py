@@ -1,58 +1,60 @@
-"""Regras e constantes do jogo, lidas de regras/*.json (públicas, no motor)."""
+"""Rules and constants of the game, read from rules/*.json (public, in the engine repository)."""
 import json
 from pathlib import Path
 
-VERSAO_MOTOR = "1.0.0"
+ENGINE_VERSION = "1.0.0"
 
-PASTA_MOTOR = Path(__file__).resolve().parent.parent
-PASTA_REGRAS = PASTA_MOTOR / "regras"
-PASTA_SITE_MODELO = PASTA_MOTOR / "site"
-
-
-def _ler(nome):
-    return json.loads((PASTA_REGRAS / nome).read_text(encoding="utf-8"))
+ENGINE_DIR = Path(__file__).resolve().parent.parent
+RULES_DIR = ENGINE_DIR / "rules"
+SITE_TEMPLATE_DIR = ENGINE_DIR / "site"
 
 
-REGRAS = _ler("regras.json")
-UNIVERSO = _ler("universo.json")
-POPULACAO = _ler("populacao.json")
-
-VERSAO_REGRAS = REGRAS["versao"]
-CAPITAL = float(REGRAS["capital_inicial_eur"])
-CAMBIO = REGRAS["custos"]["cambio"]
-DERRAPAGEM = REGRAS["custos"]["derrapagem"]
-RETENCAO = REGRAS["custos"]["retencao_dividendos"]
-CART = REGRAS["carteira"]
-DADOS = REGRAS["dados"]
-MEDIDAS = REGRAS["medidas"]
-SINAIS = POPULACAO["sinais"]
-
-# Índices (só para referência e para o "travão" de mercado)
-INDICE_PRECO = "^GSPC"      # S&P 500 (preço)
-INDICE_TOTAL = "^SP500TR"   # S&P 500 com dividendos reinvestidos
-INDICES = [INDICE_PRECO, INDICE_TOTAL]
+def _read(name):
+    return json.loads((RULES_DIR / name).read_text(encoding="utf-8"))
 
 
-def tickers_universo():
-    return [e["ticker"] for e in UNIVERSO["empresas"]]
+RULES = _read("rules.json")
+UNIVERSE = _read("universe.json")
+POPULATION = _read("population.json")
+SOURCES = _read("sources.json")
+
+RULES_VERSION = RULES["version"]
+CAPITAL = float(RULES["initial_capital_eur"])
+FX_COST = RULES["costs"]["fx"]
+SLIPPAGE = RULES["costs"]["slippage"]
+WITHHOLDING = RULES["costs"]["dividend_withholding"]
+PORTFOLIO = RULES["portfolio"]
+DATA = RULES["data"]
+METRICS = RULES["metrics"]
+SIGNALS = POPULATION["signals"]
+PRICE_SIGNALS = SIGNALS[:8]   # the ones computed in phase 1
+
+# Indices (benchmark and market "brake" only)
+INDEX_PRICE = "^GSPC"      # S&P 500 (price)
+INDEX_TOTAL = "^SP500TR"   # S&P 500 with dividends reinvested
+INDICES = [INDEX_PRICE, INDEX_TOTAL]
 
 
-def simbolo_yahoo(ticker):
+def universe_tickers():
+    return [c["ticker"] for c in UNIVERSE["companies"]]
+
+
+def yahoo_symbol(ticker):
     return ticker if ticker.startswith("^") else ticker.replace(".", "-")
 
 
-NOMES = {e["ticker"]: e["nome"] for e in UNIVERSO["empresas"]}
+NAMES = {c["ticker"]: c["name"] for c in UNIVERSE["companies"]}
 
-NOMES_SINAIS = {
-    "tend_1m": "tendência 1 mês",
-    "tend_3m": "tendência 3 meses",
-    "tend_6m": "tendência 6 meses",
-    "tend_12m": "tendência 12 meses",
-    "regresso_1s": "queda na última semana",
-    "regresso_1m": "queda no último mês",
-    "risco_baixo": "risco baixo",
-    "perto_maximo": "perto do máximo do ano",
-    "noticias": "notícias",
-    "valor": "valor",
-    "qualidade": "qualidade",
+SIGNAL_NAMES = {
+    "mom_1m": "1-month trend",
+    "mom_3m": "3-month trend",
+    "mom_6m": "6-month trend",
+    "mom_12m": "12-month trend",
+    "rev_1w": "last week's drop",
+    "rev_1m": "last month's drop",
+    "low_risk": "low risk",
+    "near_high": "near the 1-year high",
+    "news": "news",
+    "value": "value",
+    "quality": "quality",
 }

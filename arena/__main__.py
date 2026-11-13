@@ -1,12 +1,13 @@
-"""Comandos da Arena.  Uso:  python -m arena <comando> --arquivo <pasta do arquivo>
+"""Arena commands.  Usage:  python -m arena <command> --archive <archive folder>
 
-  criar      cria uma arena nova no arquivo (dia zero + histórico de preços para os sinais)
-  buscar     acrescenta ao arquivo os dados novos (Yahoo, BCE, Tiingo)
-  processar  processa os dias de bolsa em falta (sem ir buscar dados)
-  noite      buscar + processar + site  (é o que corre no GitHub todas as noites)
-  refazer    refaz uma noite e confirma que dá exatamente o mesmo
-  site       gera o site a partir do diário
-  conferir   contas de um participante, passo a passo, para conferir à mão
+  create    creates a new arena in the archive (day zero + price history for the signals)
+  fetch     appends new data to the archive (Yahoo, ECB, Tiingo)
+  process   processes the missing trading days (without fetching)
+  night     fetch + process + site  (what runs on GitHub every night)
+  replay    replays a night and confirms it gives exactly the same result
+  site      builds the site from the journal
+  audit     one participant's accounts, step by step, to check by hand
+  sources   lists the registered data sources and their terms
 """
 import argparse
 import random
@@ -17,110 +18,121 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from . import config
-from .arquivo import Arquivo
+from .archive import Archive
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="arena", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("comando", choices=["criar", "buscar", "processar", "noite", "refazer", "site", "conferir"])
-    ap.add_argument("--arquivo", required=True, help="pasta do arquivo privado")
-    ap.add_argument("--dia-zero", help="criar: último dia de bolsa antes do primeiro dia de negociação")
-    ap.add_argument("--modo", default="ensaio", choices=["ensaio", "oficial"])
-    ap.add_argument("--ate", help="processar: só até este dia")
-    ap.add_argument("--data", help="refazer: dia a refazer")
-    ap.add_argument("--ao-acaso", action="store_true", help="refazer: um dia ao acaso")
-    ap.add_argument("--participante", help="conferir: nome do participante")
-    ap.add_argument("--saida", help="conferir: ficheiro CSV de saída")
-    ap.add_argument("--detalhe", action="store_true", help="mostra o erro completo (só no PC)")
+    ap.add_argument("command", choices=["create", "fetch", "process", "night", "replay", "site", "audit", "sources"])
+    ap.add_argument("--archive", help="private archive folder")
+    ap.add_argument("--day-zero", help="create: last trading day before the first trading day")
+    ap.add_argument("--mode", default="trial", choices=["trial", "official"])
+    ap.add_argument("--until", help="process: only up to this day")
+    ap.add_argument("--date", help="replay: day to replay")
+    ap.add_argument("--random", action="store_true", help="replay: a random day")
+    ap.add_argument("--participant", help="audit: participant name")
+    ap.add_argument("--out", help="audit: output CSV file")
+    ap.add_argument("--detail", action="store_true", help="show the full error (local use only)")
     a = ap.parse_args(argv)
-    arq = Arquivo(a.arquivo)
-    agora = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    if a.command == "sources":
+        for s in config.SOURCES["sources"]:
+            print(f"{s['id']:<11} {', '.join(s['role'])}  |  use: {s['use']}  |  {s['license']}")
+        return 0
+    if not a.archive:
+        ap.error("--archive is required")
+    archive = Archive(a.archive)
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     try:
-        if a.comando == "criar":
-            return criar(arq, a.dia_zero, a.modo)
-        if a.comando == "buscar":
-            from .noite import buscar
-            r = buscar(arq)
-            print(f"dados até {r['ate']}: {r['precos']} linhas de preços, {r['eventos']} eventos, {r['cambio']} câmbios, {r['tiingo']} conferências")
+        if a.command == "create":
+            return create(archive, a.day_zero, a.mode)
+        if a.command == "fetch":
+            from .night import fetch
+            r = fetch(archive)
+            print(f"data until {r['until']}: {r['prices']} price rows, {r['events']} events, {r['fx']} FX rates, {r['tiingo']} cross-checks")
             return 0
-        if a.comando == "processar":
-            from .noite import processar
-            dias = processar(arq, a.ate)
-            print(f"{len(dias)} dias processados" + (f" ({dias[0]} a {dias[-1]})" if dias else ""))
+        if a.command == "process":
+            from .night import process
+            days = process(archive, a.until)
+            print(f"{len(days)} days processed" + (f" ({days[0]} to {days[-1]})" if days else ""))
             return 0
-        if a.comando == "noite":
-            return noite(arq, agora)
-        if a.comando == "refazer":
-            return refazer(arq, a.data, a.ao_acaso, agora)
-        if a.comando == "site":
-            from .site import gerar
-            gerar(arq)
-            print("site gerado")
+        if a.command == "night":
+            return night(archive, now)
+        if a.command == "replay":
+            return replay(archive, a.date, a.random, now)
+        if a.command == "site":
+            from .site import build
+            build(archive)
+            print("site built")
             return 0
-        if a.comando == "conferir":
-            from .conferir import conferir
-            print(conferir(arq, a.participante, a.saida))
+        if a.command == "audit":
+            from .audit import audit
+            print(audit(archive, a.participant, a.out))
             return 0
-    except Exception as e:  # nos registos públicos só sai o tipo e a mensagem
-        print(f"ERRO: {type(e).__name__}: {e}")
-        if "--detalhe" in sys.argv:
+    except Exception as e:  # public logs only show the error type and message
+        print(f"ERROR: {type(e).__name__}: {e}")
+        if a.detail:
             traceback.print_exc()
         try:
-            arq.registar(f"{agora},{a.comando},,erro {type(e).__name__}")
+            archive.log(f"{now},{a.command},,error {type(e).__name__}")
         except Exception:
             pass
         return 1
 
 
-def criar(arq, dia_zero, modo):
-    if not dia_zero:
-        raise SystemExit("falta --dia-zero")
-    if (arq.raiz / "arena.json").exists():
-        raise SystemExit("este arquivo já tem uma arena")
-    from .noite import buscar
-    arq.gravar_cfg({"nome": "Arena de Agentes", "modo": modo, "dia_zero": dia_zero,
-                    "universo_congelado_em": config.UNIVERSO["congelado_em"],
-                    "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                    "nota": "Ensaio: resultados apagados no arranque oficial (guardados à parte)." if modo == "ensaio" else ""})
-    desde = (pd.Timestamp(dia_zero) - pd.Timedelta(days=430)).date().isoformat()
-    r = buscar(arq, historico_desde=desde)
-    print(f"arena criada (dia zero {dia_zero}); histórico desde {desde}: {r['precos']} linhas de preços")
+def create(archive, day_zero, mode):
+    if not day_zero:
+        raise SystemExit("missing --day-zero")
+    if (archive.root / "arena.json").exists():
+        raise SystemExit("this archive already has an arena")
+    from .night import fetch
+    archive.write_cfg({"name": "Arena of Agents", "mode": mode, "day_zero": day_zero,
+                       "universe_frozen_on": config.UNIVERSE["frozen_on"],
+                       "created_on": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                       "note": "Trial: results are wiped at the official start (kept separately)." if mode == "trial" else ""})
+    start = (pd.Timestamp(day_zero) - pd.Timedelta(days=430)).date().isoformat()
+    r = fetch(archive, history_from=start)
+    print(f"arena created (day zero {day_zero}); history from {start}: {r['prices']} price rows")
     return 0
 
 
-def noite(arq, agora):
-    from .noite import buscar, processar
-    from .site import gerar
-    r = buscar(arq)
-    dias = processar(arq)
-    gerar(arq)
-    res = f"ok: dados até {r['ate']}, {len(dias)} noites processadas"
-    if dias:
-        ult = arq.ler_diario(dias[-1])
-        n_ord = sum(len(p["pendentes"]) for p in ult["estado"]["participantes"].values())
-        n_exc = len(ult["verificacao"]["excluidas"])
-        res += f", última {dias[-1]}: {n_ord} ordens para amanhã, {n_exc} empresas postas de lado"
+def night(archive, now):
+    from .night import fetch, process
+    r = fetch(archive)
+    days = process(archive)
+    site_ok = True
+    try:
+        from .site import build
+        build(archive)
+    except Exception as e:   # the site never stops the night
+        site_ok = False
+        print(f"site not built: {type(e).__name__}")
+    res = f"ok: data until {r['until']}, {len(days)} nights processed"
+    if days:
+        last = archive.read_journal(days[-1])
+        n_orders = sum(len(p["pending"]) for p in last["state"]["participants"].values())
+        n_exc = len(last["checks"]["excluded"])
+        res += f", last {days[-1]}: {n_orders} orders for tomorrow, {n_exc} companies set aside"
     print(res)
-    arq.registar(f"{agora},noite,{len(dias)},ok")
+    archive.log(f"{now},night,{len(days)},ok" + ("" if site_ok else " (site failed)"))
     return 0
 
 
-def refazer(arq, data, ao_acaso, agora):
-    from .noite import refazer as refazer_dia
-    dias = arq.dias_no_diario()
-    if not dias:
-        print("ainda não há noites para refazer")
+def replay(archive, date, at_random, now):
+    from .night import replay as replay_day
+    days = archive.journal_days()
+    if not days:
+        print("no nights to replay yet")
         return 0
-    if ao_acaso:
-        data = random.Random(agora[:10]).choice(dias)
-    r = refazer_dia(arq, data)
-    if r["igual"]:
-        print(f"refazer {r['dia']}: igual")
-        arq.registar(f"{agora},refazer {r['dia']},1,igual")
+    if at_random:
+        date = random.Random(now[:10]).choice(days)
+    r = replay_day(archive, date)
+    if r["identical"]:
+        print(f"replay {r['day']}: identical")
+        archive.log(f"{now},replay {r['day']},1,identical")
         return 0
-    nota = "" if r["codigo_guardado"] == r["codigo_agora"] else f" (código mudou: {r['codigo_guardado']} -> {r['codigo_agora']})"
-    print(f"refazer {r['dia']}: DIFERENTE em {', '.join(r['diferencas'])}{nota}")
-    arq.registar(f"{agora},refazer {r['dia']},1,diferente")
+    note = "" if r["stored_code"] == r["current_code"] else f" (code changed: {r['stored_code']} -> {r['current_code']})"
+    print(f"replay {r['day']}: DIFFERENT in {', '.join(r['differences'])}{note}")
+    archive.log(f"{now},replay {r['day']},1,different")
     return 1
 
 

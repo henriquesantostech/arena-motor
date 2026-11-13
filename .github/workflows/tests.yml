@@ -1,5 +1,5 @@
-# Testes do motor com dados inventados, sempre que o código muda.
-name: testes
+# Engine tests on made-up data, whenever the code changes.
+name: tests
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  testes:
+  tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

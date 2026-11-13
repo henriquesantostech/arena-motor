@@ -1,0 +1,73 @@
+# Arena nightly run (design ch. 10).
+# Tuesday to Saturday at 02:00 UTC (02:00 Lisbon in winter, 03:00 in summer), after the US close.
+# This repository's logs are public: the engine only prints counts and ok/error, never data.
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * 2-6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write   # only to keep the scheduled workflow enabled (GitHub's 60-day rule)
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  night:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Engine (this repository)
+        uses: actions/checkout@v4
+
+      - name: Private archive
+        uses: actions/checkout@v4
+        with:
+          repository: henriquesantostech/arena-arquivo
+          path: archive
+          ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Libraries
+        run: pip install -q -r requirements.txt
+
+      - name: Night (fetch, check, fill, decide, journal, site)
+        env:
+          TIINGO_KEY: ${{ secrets.TIINGO_KEY }}
+        run: python -m arena night --archive archive
+
+      - name: Replay a random night (must be identical)
+        id: replay
+        continue-on-error: true
+        run: python -m arena replay --archive archive --random
+
+      - name: Save to the archive
+        working-directory: archive
+        run: |
+          git config user.name "arena-engine"
+          git config user.email "250372676+henriquesantostech@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -q -m "night $(date -u +%Y-%m-%d)"
+          git push -q
+
+      - name: Keep the scheduled workflow enabled
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/nightly.yml/enable" || true
+
+      - name: Alert if the replay differed
+        if: steps.replay.outcome == 'failure'
+        run: |
+          echo "A replayed night was different. See journal/log.csv in the archive."
+          exit 1

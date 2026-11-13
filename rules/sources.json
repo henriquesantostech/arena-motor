@@ -1,0 +1,71 @@
+{
+ "version": "1.0",
+ "date": "2026-11-13",
+ "note": "Registry of data sources. Each source is a replaceable adapter in arena/sources/ behind a fixed interface, so a licensed provider can replace it without touching the rest of the engine. Current use is personal and non-commercial; raw data is kept in the private archive and never republished.",
+ "sources": [
+  {
+   "id": "yahoo",
+   "provider": "Yahoo Finance, via the open-source yfinance library",
+   "adapter": "arena/sources/yahoo.py",
+   "role": ["daily_prices", "corporate_actions"],
+   "primary_for": ["daily_prices", "corporate_actions"],
+   "data": "daily open, high, low, close (unadjusted for dividends), volume; dividends and splits by ex-date",
+   "terms": "Unofficial access to a public website; Yahoo terms allow personal use only. Not guaranteed; may block heavy use.",
+   "terms_url": "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
+   "license": "No redistribution licence",
+   "use": "personal",
+   "redistribution": "not allowed: raw data stays in the private archive; only derived figures are published",
+   "credentials": "none",
+   "fallback": "tiingo",
+   "commercial_replacement": "a licensed end-of-day data vendor"
+  },
+  {
+   "id": "ecb",
+   "provider": "European Central Bank, euro foreign exchange reference rates (data portal API)",
+   "adapter": "arena/sources/ecb.py",
+   "role": ["fx_rates"],
+   "primary_for": ["fx_rates"],
+   "data": "daily EUR/USD reference rate (USD per 1 EUR), set around 14:10 CET",
+   "terms": "Public official statistics; reuse allowed with source attribution.",
+   "terms_url": "https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html",
+   "license": "ECB statistics reuse policy (attribution)",
+   "use": "personal (commercial reuse permitted with attribution)",
+   "redistribution": "allowed with attribution",
+   "credentials": "none",
+   "fallback": null,
+   "commercial_replacement": "not needed"
+  },
+  {
+   "id": "tiingo",
+   "provider": "Tiingo end-of-day API (free account)",
+   "adapter": "arena/sources/tiingo.py",
+   "role": ["price_crosscheck", "daily_prices_fallback"],
+   "primary_for": [],
+   "data": "daily close for a nightly sample of 5 companies, compared with Yahoo",
+   "terms": "Free plan for personal, internal use; limits on requests and unique symbols per month.",
+   "terms_url": "https://www.tiingo.com/about/terms",
+   "license": "Personal use; commercial use needs a paid licence",
+   "use": "personal",
+   "redistribution": "not allowed",
+   "credentials": "API token in the GitHub secret TIINGO_KEY (never in code)",
+   "fallback": null,
+   "commercial_replacement": "Tiingo commercial plan or another licensed vendor"
+  },
+  {
+   "id": "sp100_list",
+   "provider": "Public S&P 100 constituent list (Wikipedia)",
+   "adapter": "rules/universe.json (frozen once, by hand)",
+   "role": ["universe"],
+   "primary_for": ["universe"],
+   "data": "tickers, names and sectors of the S&P 100, frozen with a date",
+   "terms": "Text under CC BY-SA; index composition is a public fact. S&P index names are trademarks of S&P Dow Jones Indices.",
+   "terms_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+   "license": "CC BY-SA 4.0 (Wikipedia text)",
+   "use": "personal",
+   "redistribution": "list of tickers allowed; index data itself not redistributed",
+   "credentials": "none",
+   "fallback": null,
+   "commercial_replacement": "S&P Dow Jones Indices licence if the product uses the index name commercially"
+  }
+ ]
+}

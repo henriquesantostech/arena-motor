@@ -1,0 +1,874 @@
+{
+ "version": "1.0",
+ "generation": 1,
+ "signals": [
+  "mom_1m",
+  "mom_3m",
+  "mom_6m",
+  "mom_12m",
+  "rev_1w",
+  "rev_1m",
+  "low_risk",
+  "near_high",
+  "news",
+  "value",
+  "quality"
+ ],
+ "species": {
+  "Trend": {
+   "prefix": "Arrow",
+   "description": "buys what is rising"
+  },
+  "Contrarian": {
+   "prefix": "Wave",
+   "description": "buys what has fallen too far"
+  },
+  "Value & Quality": {
+   "prefix": "Rock",
+   "description": "buys good, cheap companies and trades little (value and quality arrive in phase 2; until then it uses low risk and resilience)"
+  },
+  "News": {
+   "prefix": "Echo",
+   "description": "reacts to the tone of the news (arrives in phase 2; until then it reacts to last week's and last month's moves)"
+  },
+  "Balanced": {
+   "prefix": "Keel",
+   "description": "a bit of everything, low risk"
+  }
+ },
+ "note": "Weights in % (they add up to 100). News, value and quality stay at 0 until phase 2. Monkeys copy an agent's management (number of holdings, review, threshold, cuts) but pick at random. seed_id is the frozen identifier of each monkey's random draw, so renaming never changes the draws.",
+ "participants": [
+  {
+   "name": "Arrow-01",
+   "type": "agent",
+   "species": "Trend",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 10,
+     "mom_3m": 20,
+     "mom_6m": 35,
+     "mom_12m": 25,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 10,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.5,
+    "stop_loss": 0.12,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Arrow-02",
+   "type": "agent",
+   "species": "Trend",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 20,
+     "mom_6m": 30,
+     "mom_12m": 40,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 10,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 10,
+    "threshold": 0.3,
+    "stop_loss": null,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Arrow-03",
+   "type": "agent",
+   "species": "Trend",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 30,
+     "mom_3m": 40,
+     "mom_6m": 20,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 10,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 8,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.7,
+    "stop_loss": 0.1,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Arrow-04",
+   "type": "agent",
+   "species": "Trend",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 30,
+     "mom_12m": 30,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 20,
+     "near_high": 20,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 20,
+    "max_weight": 0.08,
+    "review_days": 21,
+    "threshold": 0.3,
+    "stop_loss": 0.15,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Wave-01",
+   "type": "agent",
+   "species": "Contrarian",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 50,
+     "rev_1m": 30,
+     "low_risk": 20,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.5,
+    "stop_loss": 0.15,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Wave-02",
+   "type": "agent",
+   "species": "Contrarian",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 20,
+     "rev_1w": 20,
+     "rev_1m": 50,
+     "low_risk": 10,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 10,
+    "threshold": 0.4,
+    "stop_loss": null,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Wave-03",
+   "type": "agent",
+   "species": "Contrarian",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 70,
+     "rev_1m": 0,
+     "low_risk": 30,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 8,
+    "max_weight": 0.15,
+    "review_days": 3,
+    "threshold": 0.8,
+    "stop_loss": 0.1,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Wave-04",
+   "type": "agent",
+   "species": "Contrarian",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 40,
+     "rev_1w": 0,
+     "rev_1m": 40,
+     "low_risk": 20,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 12,
+    "max_weight": 0.12,
+    "review_days": 10,
+    "threshold": 0.5,
+    "stop_loss": 0.12,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Rock-01",
+   "type": "agent",
+   "species": "Value & Quality",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 20,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 50,
+     "near_high": 30,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 21,
+    "threshold": 0.5,
+    "stop_loss": null,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Rock-02",
+   "type": "agent",
+   "species": "Value & Quality",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 30,
+     "rev_1w": 0,
+     "rev_1m": 30,
+     "low_risk": 40,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 20,
+    "max_weight": 0.08,
+    "review_days": 21,
+    "threshold": 0.6,
+    "stop_loss": null,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Rock-03",
+   "type": "agent",
+   "species": "Value & Quality",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 60,
+     "near_high": 40,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 42,
+    "threshold": 0.8,
+    "stop_loss": null,
+    "brake": 0.3
+   }
+  },
+  {
+   "name": "Rock-04",
+   "type": "agent",
+   "species": "Value & Quality",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 40,
+     "rev_1w": 0,
+     "rev_1m": 30,
+     "low_risk": 30,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 12,
+    "max_weight": 0.12,
+    "review_days": 21,
+    "threshold": 0.5,
+    "stop_loss": 0.2,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Echo-01",
+   "type": "agent",
+   "species": "News",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 40,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 30,
+     "rev_1m": 0,
+     "low_risk": 30,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.4,
+    "stop_loss": 0.1,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Echo-02",
+   "type": "agent",
+   "species": "News",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 50,
+     "mom_3m": 30,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 20,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 12,
+    "max_weight": 0.12,
+    "review_days": 5,
+    "threshold": 0.5,
+    "stop_loss": 0.12,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Echo-03",
+   "type": "agent",
+   "species": "News",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 30,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 40,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 30,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 8,
+    "max_weight": 0.15,
+    "review_days": 3,
+    "threshold": 0.6,
+    "stop_loss": 0.08,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Echo-04",
+   "type": "agent",
+   "species": "News",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 30,
+     "mom_3m": 30,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 40,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 10,
+    "threshold": 0.4,
+    "stop_loss": null,
+    "brake": 0.3
+   }
+  },
+  {
+   "name": "Keel-01",
+   "type": "agent",
+   "species": "Balanced",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 20,
+     "mom_12m": 15,
+     "rev_1w": 0,
+     "rev_1m": 15,
+     "low_risk": 30,
+     "near_high": 20,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 20,
+    "max_weight": 0.08,
+    "review_days": 10,
+    "threshold": 0.4,
+    "stop_loss": 0.15,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Keel-02",
+   "type": "agent",
+   "species": "Balanced",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 15,
+     "mom_6m": 15,
+     "mom_12m": 0,
+     "rev_1w": 15,
+     "rev_1m": 0,
+     "low_risk": 40,
+     "near_high": 15,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 25,
+    "max_weight": 0.06,
+    "review_days": 21,
+    "threshold": 0.3,
+    "stop_loss": null,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Keel-03",
+   "type": "agent",
+   "species": "Balanced",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 25,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 25,
+     "low_risk": 25,
+     "near_high": 25,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 10,
+    "threshold": 0.5,
+    "stop_loss": 0.12,
+    "brake": 0.3
+   }
+  },
+  {
+   "name": "Keel-04",
+   "type": "agent",
+   "species": "Balanced",
+   "parents": null,
+   "dna": {
+    "weights": {
+     "mom_1m": 10,
+     "mom_3m": 10,
+     "mom_6m": 10,
+     "mom_12m": 10,
+     "rev_1w": 10,
+     "rev_1m": 10,
+     "low_risk": 20,
+     "near_high": 20,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 20,
+    "max_weight": 0.08,
+    "review_days": 21,
+    "threshold": 0.5,
+    "stop_loss": 0.15,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Monkey-01",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Arrow-01",
+   "seed_id": "Macaco-01",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.5,
+    "stop_loss": 0.12,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Monkey-02",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Arrow-03",
+   "seed_id": "Macaco-02",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 8,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.7,
+    "stop_loss": 0.1,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Monkey-03",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Wave-01",
+   "seed_id": "Macaco-03",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.5,
+    "stop_loss": 0.15,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Monkey-04",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Wave-03",
+   "seed_id": "Macaco-04",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 8,
+    "max_weight": 0.15,
+    "review_days": 3,
+    "threshold": 0.8,
+    "stop_loss": 0.1,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Monkey-05",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Rock-01",
+   "seed_id": "Macaco-05",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 21,
+    "threshold": 0.5,
+    "stop_loss": null,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Monkey-06",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Rock-03",
+   "seed_id": "Macaco-06",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 42,
+    "threshold": 0.8,
+    "stop_loss": null,
+    "brake": 0.3
+   }
+  },
+  {
+   "name": "Monkey-07",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Echo-01",
+   "seed_id": "Macaco-07",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 10,
+    "max_weight": 0.15,
+    "review_days": 5,
+    "threshold": 0.4,
+    "stop_loss": 0.1,
+    "brake": 0.0
+   }
+  },
+  {
+   "name": "Monkey-08",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Echo-03",
+   "seed_id": "Macaco-08",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 8,
+    "max_weight": 0.15,
+    "review_days": 3,
+    "threshold": 0.6,
+    "stop_loss": 0.08,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Monkey-09",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Keel-01",
+   "seed_id": "Macaco-09",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 20,
+    "max_weight": 0.08,
+    "review_days": 10,
+    "threshold": 0.4,
+    "stop_loss": 0.15,
+    "brake": 0.5
+   }
+  },
+  {
+   "name": "Monkey-10",
+   "type": "monkey",
+   "species": "Monkey",
+   "copies_management_of": "Keel-03",
+   "seed_id": "Macaco-10",
+   "dna": {
+    "weights": {
+     "mom_1m": 0,
+     "mom_3m": 0,
+     "mom_6m": 0,
+     "mom_12m": 0,
+     "rev_1w": 0,
+     "rev_1m": 0,
+     "low_risk": 0,
+     "near_high": 0,
+     "news": 0,
+     "value": 0,
+     "quality": 0
+    },
+    "n_holdings": 15,
+    "max_weight": 0.1,
+    "review_days": 10,
+    "threshold": 0.5,
+    "stop_loss": 0.12,
+    "brake": 0.3
+   }
+  },
+  {
+   "name": "S&P 500 (EUR)",
+   "type": "index",
+   "species": "Benchmark",
+   "dna": null
+  },
+  {
+   "name": "Equal weight",
+   "type": "equal_weight",
+   "species": "Benchmark",
+   "dna": null
+  }
+ ]
+}

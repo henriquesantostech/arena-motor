@@ -1,1 +1,1 @@
-"""Arena de Agentes: motor. Experiência com dinheiro fictício; não é recomendação de investimento."""
+"""Arena of Agents: engine. A paper-money experiment; not investment advice."""
