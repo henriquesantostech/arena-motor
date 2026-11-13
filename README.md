@@ -1,46 +1,68 @@
 # Arena de Agentes (motor)
 
-Experiência com **dinheiro fictício**: agentes autónomos que investem no S&P 100 real.
-Nada aqui é recomendação de investimento nem há ligação a corretoras.
+Experiência com **dinheiro fictício**: 20 agentes autónomos, 10 "macacos" que escolhem ao acaso e 2 referências
+competem no S&P 100 real, com 100.000 € fictícios cada. Tudo é transparente: cada decisão tem justificação,
+e qualquer noite pode ser refeita e dá exatamente o mesmo.
 
-## Fase 0: o primeiro programa
+**Nada aqui é recomendação de investimento. Não há ligação a corretoras nem ordens reais.**
 
-`precos.py` descarrega os preços diários de 5 empresas do S&P 100 (Apple, Microsoft,
-Johnson & Johnson, Coca-Cola, JPMorgan) desde 2025-01-01 e mostra um gráfico.
+Este repositório (público) tem só o código e as regras do jogo. Os dados descarregados das fontes e os
+resultados ficam num arquivo privado, porque os termos das fontes não permitem republicá-los.
 
-### Como correr (PowerShell)
+## Como funciona uma noite
 
-```
-cd <pasta do projeto>
-.venv\Scripts\python.exe precos.py
-```
+Corre sozinho no GitHub, de terça a sábado às 02:00 (UTC), depois do fecho da bolsa de Nova Iorque:
 
-Aparece no ecrã um resumo dos últimos 5 dias e abre-se uma janela com o gráfico.
-Ficam também guardados:
-- `dados\precos.csv` — a tabela de preços (abre no Excel);
-- `graficos\precos.png` — a imagem do gráfico.
+1. **Buscar**: preços diários e eventos (dividendos, splits) do Yahoo; câmbio EUR/USD do BCE; amostra do Tiingo para conferir.
+   Os dados só se acrescentam ao arquivo, nunca se reescrevem.
+2. **Verificar**: empresas sem dados ou com saltos de preço estranhos ficam de fora dessa noite.
+3. **Executar** à abertura de hoje as ordens decididas ontem, com custos (câmbio 0,15% + derrapagem 0,05%).
+   Antes disso aplicam-se os dividendos (com retenção de 15%) e os splits.
+4. **Avaliar** cada carteira ao fecho.
+5. **Sinais**: tendência (1, 3, 6 e 12 meses), regresso à média (semana, mês) e risco (volatilidade, distância ao máximo).
+6. **Decidir**: cada agente pontua as empresas com os pesos do seu ADN e decide o que comprar e vender amanhã.
+7. **Diário**: um pacote por noite com as impressões digitais dos dados, sinais, decisões, justificações e carteiras.
+8. **Site**: ranking, fichas e diário, gerados a partir do diário.
 
-### As peças
+## As peças
 
-| Peça | O que é |
+| Ficheiro | O que faz |
 |---|---|
-| Python 3.14 | a linguagem; já estava instalada em `C:\Python314` |
-| `.venv` | "ambiente virtual": uma cópia do Python só deste projeto, com as bibliotecas dele, para não misturar com outros |
-| `requirements.txt` | a lista das bibliotecas e versões (yfinance, pandas, matplotlib) |
-| `.gitignore` | o que nunca vai para o GitHub (ambiente, dados descarregados, gráficos) |
+| `regras/regras.json` | custos, limites e medidas (as regras do jogo) |
+| `regras/universo.json` | as 101 ações do S&P 100, lista congelada com data |
+| `regras/populacao.json` | o ADN dos 20 agentes, os 10 macacos e as 2 referências |
+| `regras/mudancas.md` | qualquer mudança às regras, com data e motivo |
+| `arena/fontes.py` | ir buscar dados (Yahoo, BCE, Tiingo) |
+| `arena/arquivo.py` | ler e acrescentar ao arquivo privado; impressões digitais |
+| `arena/vista.py` | o que se sabia no fim de cada dia (nada do futuro entra) |
+| `arena/verificar.py` | verificação dos dados |
+| `arena/sinais.py` | sinais de preços |
+| `arena/mercado.py` | o árbitro: execução, custos, dividendos, splits |
+| `arena/agentes.py` | como cada participante decide e justifica |
+| `arena/noite.py` | a noite inteira; refazer uma noite |
+| `arena/medidas.py` | indicadores e pontuação do ranking |
+| `arena/site.py` + `site/` | o site 2D |
+| `arena/conferir.py` | conferência independente das contas de um participante (CSV para Excel) |
+| `tests/` | testes com dados inventados |
+| `.github/workflows/` | corrida noturna e testes |
 
-### O programa, pedaço a pedaço
-
-1. **Ferramentas:** importa as bibliotecas. `yfinance` vai buscar os preços ao Yahoo; `pandas` trata tabelas; `matplotlib` desenha.
-2. **O que queremos:** a lista de empresas (códigos da bolsa), a data de início e as pastas de saída. Para mudar de empresas, muda-se só aqui.
-3. **Buscar ao Yahoo:** um único pedido para as 5 empresas; fica o preço de fecho já ajustado a dividendos e *splits*.
-4. **Verificar:** se não veio nada, para com uma mensagem; se faltar alguma empresa, avisa.
-5. **O programa:** mostra o resumo, grava a tabela e desenha o gráfico com todas a começar em 100, para se comparar a evolução e não o preço.
-
-### Se precisar de reinstalar o ambiente
+## Comandos (PowerShell, na pasta do projeto)
 
 ```
-cd <pasta do projeto>
+.venv\Scripts\python.exe -m arena noite     --arquivo ..\arena-arquivo
+.venv\Scripts\python.exe -m arena refazer   --arquivo ..\arena-arquivo --data 2026-11-20
+.venv\Scripts\python.exe -m arena conferir  --arquivo ..\arena-arquivo --participante Flecha-01
+.venv\Scripts\python.exe -m arena site      --arquivo ..\arena-arquivo
+.venv\Scripts\python.exe -m pytest -q
+```
+
+O site abre-se com um duplo clique em `arena-arquivo\site\index.html`.
+
+## Instalar o ambiente
+
+```
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+A pasta `fase0` guarda o primeiro programa (gráfico de preços); precisa também de `matplotlib`.

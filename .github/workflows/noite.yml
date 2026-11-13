@@ -1,0 +1,73 @@
+# Corrida noturna da Arena (desenho cap. 10).
+# Terça a sábado às 02:00 UTC (02:00 de Lisboa no inverno, 03:00 no verão), depois do fecho dos EUA.
+# Os registos deste repositório são públicos: o motor só escreve contagens e "ok/erro", nunca dados.
+name: noite
+
+on:
+  schedule:
+    - cron: "0 2 * * 2-6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write   # só para manter a tarefa agendada ativa (regra dos 60 dias do GitHub)
+
+concurrency:
+  group: noite
+  cancel-in-progress: false
+
+jobs:
+  noite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Motor (este repositório)
+        uses: actions/checkout@v4
+
+      - name: Arquivo privado
+        uses: actions/checkout@v4
+        with:
+          repository: henriquesantostech/arena-arquivo
+          path: arquivo
+          ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Bibliotecas
+        run: pip install -q -r requirements.txt
+
+      - name: Noite (buscar, verificar, executar, decidir, diário, site)
+        env:
+          TIINGO_KEY: ${{ secrets.TIINGO_KEY }}
+        run: python -m arena noite --arquivo arquivo
+
+      - name: Refazer uma noite ao acaso (tem de dar igual)
+        id: refazer
+        continue-on-error: true
+        run: python -m arena refazer --arquivo arquivo --ao-acaso
+
+      - name: Gravar no arquivo
+        working-directory: arquivo
+        run: |
+          git config user.name "arena-motor"
+          git config user.email "250372676+henriquesantostech@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "nada de novo"; exit 0; fi
+          git commit -q -m "noite $(date -u +%Y-%m-%d)"
+          git push -q
+
+      - name: Manter a tarefa agendada ativa
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/noite.yml/enable" || true
+
+      - name: Avisar se refazer deu diferente
+        if: steps.refazer.outcome == 'failure'
+        run: |
+          echo "Uma noite refeita deu diferente. Ver diario/registo.csv no arquivo."
+          exit 1

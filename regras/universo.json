@@ -1,0 +1,614 @@
+{
+ "nome": "S&P 100",
+ "congelado_em": "2026-11-13",
+ "fonte": "lista pública do S&P 100 (Wikipedia, consultada a 2026-11-13)",
+ "nota": "Lista de ensaio. Volta a ser congelada antes do arranque oficial (2027-03-01); a lista oficial fica com a data desse dia.",
+ "empresas": [
+  {
+   "ticker": "AAPL",
+   "yahoo": "AAPL",
+   "nome": "Apple Inc.",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "ABBV",
+   "yahoo": "ABBV",
+   "nome": "AbbVie",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "ABT",
+   "yahoo": "ABT",
+   "nome": "Abbott Laboratories",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "ACN",
+   "yahoo": "ACN",
+   "nome": "Accenture",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "ADBE",
+   "yahoo": "ADBE",
+   "nome": "Adobe Inc.",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "AMAT",
+   "yahoo": "AMAT",
+   "nome": "Applied Materials",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "AMD",
+   "yahoo": "AMD",
+   "nome": "Advanced Micro Devices",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "AMGN",
+   "yahoo": "AMGN",
+   "nome": "Amgen",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "AMT",
+   "yahoo": "AMT",
+   "nome": "American Tower",
+   "setor": "Real Estate"
+  },
+  {
+   "ticker": "AMZN",
+   "yahoo": "AMZN",
+   "nome": "Amazon",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "ANET",
+   "yahoo": "ANET",
+   "nome": "Arista Networks",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "AVGO",
+   "yahoo": "AVGO",
+   "nome": "Broadcom",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "AXP",
+   "yahoo": "AXP",
+   "nome": "American Express",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "BA",
+   "yahoo": "BA",
+   "nome": "Boeing",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "BAC",
+   "yahoo": "BAC",
+   "nome": "Bank of America",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "BKNG",
+   "yahoo": "BKNG",
+   "nome": "Booking Holdings",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "BLK",
+   "yahoo": "BLK",
+   "nome": "BlackRock",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "BMY",
+   "yahoo": "BMY",
+   "nome": "Bristol Myers Squibb",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "BNY",
+   "yahoo": "BNY",
+   "nome": "BNY Mellon",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "BRK.B",
+   "yahoo": "BRK-B",
+   "nome": "Berkshire Hathaway (Class B)",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "C",
+   "yahoo": "C",
+   "nome": "Citigroup",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "CAT",
+   "yahoo": "CAT",
+   "nome": "Caterpillar Inc.",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "CMCSA",
+   "yahoo": "CMCSA",
+   "nome": "Comcast",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "COF",
+   "yahoo": "COF",
+   "nome": "Capital One",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "COP",
+   "yahoo": "COP",
+   "nome": "ConocoPhillips",
+   "setor": "Energy"
+  },
+  {
+   "ticker": "COST",
+   "yahoo": "COST",
+   "nome": "Costco",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "CRM",
+   "yahoo": "CRM",
+   "nome": "Salesforce",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "CSCO",
+   "yahoo": "CSCO",
+   "nome": "Cisco",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "CVS",
+   "yahoo": "CVS",
+   "nome": "CVS Health",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "CVX",
+   "yahoo": "CVX",
+   "nome": "Chevron Corporation",
+   "setor": "Energy"
+  },
+  {
+   "ticker": "DE",
+   "yahoo": "DE",
+   "nome": "Deere & Company",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "DELL",
+   "yahoo": "DELL",
+   "nome": "Dell Technologies",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "DHR",
+   "yahoo": "DHR",
+   "nome": "Danaher Corporation",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "DIS",
+   "yahoo": "DIS",
+   "nome": "Walt Disney Company (The)",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "DUK",
+   "yahoo": "DUK",
+   "nome": "Duke Energy",
+   "setor": "Utilities"
+  },
+  {
+   "ticker": "EMR",
+   "yahoo": "EMR",
+   "nome": "Emerson Electric",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "FDX",
+   "yahoo": "FDX",
+   "nome": "FedEx",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "GD",
+   "yahoo": "GD",
+   "nome": "General Dynamics",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "GE",
+   "yahoo": "GE",
+   "nome": "GE Aerospace",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "GEV",
+   "yahoo": "GEV",
+   "nome": "GE Vernova",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "GILD",
+   "yahoo": "GILD",
+   "nome": "Gilead Sciences",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "GM",
+   "yahoo": "GM",
+   "nome": "General Motors",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "GOOG",
+   "yahoo": "GOOG",
+   "nome": "Alphabet Inc. (Class C)",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "GOOGL",
+   "yahoo": "GOOGL",
+   "nome": "Alphabet Inc. (Class A)",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "GS",
+   "yahoo": "GS",
+   "nome": "Goldman Sachs",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "HD",
+   "yahoo": "HD",
+   "nome": "Home Depot",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "IBM",
+   "yahoo": "IBM",
+   "nome": "IBM",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "INTC",
+   "yahoo": "INTC",
+   "nome": "Intel",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "INTU",
+   "yahoo": "INTU",
+   "nome": "Intuit",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "ISRG",
+   "yahoo": "ISRG",
+   "nome": "Intuitive Surgical",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "JNJ",
+   "yahoo": "JNJ",
+   "nome": "Johnson & Johnson",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "JPM",
+   "yahoo": "JPM",
+   "nome": "JPMorgan Chase",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "KO",
+   "yahoo": "KO",
+   "nome": "Coca-Cola Company (The)",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "LIN",
+   "yahoo": "LIN",
+   "nome": "Linde plc",
+   "setor": "Materials"
+  },
+  {
+   "ticker": "LLY",
+   "yahoo": "LLY",
+   "nome": "Eli Lilly and Company",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "LMT",
+   "yahoo": "LMT",
+   "nome": "Lockheed Martin",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "LOW",
+   "yahoo": "LOW",
+   "nome": "Lowe's",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "LRCX",
+   "yahoo": "LRCX",
+   "nome": "Lam Research",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "MA",
+   "yahoo": "MA",
+   "nome": "Mastercard",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "MCD",
+   "yahoo": "MCD",
+   "nome": "McDonald's",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "MDLZ",
+   "yahoo": "MDLZ",
+   "nome": "Mondelēz International",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "MDT",
+   "yahoo": "MDT",
+   "nome": "Medtronic",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "META",
+   "yahoo": "META",
+   "nome": "Meta Platforms",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "MMM",
+   "yahoo": "MMM",
+   "nome": "3M",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "MO",
+   "yahoo": "MO",
+   "nome": "Altria",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "MRK",
+   "yahoo": "MRK",
+   "nome": "Merck & Co.",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "MS",
+   "yahoo": "MS",
+   "nome": "Morgan Stanley",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "MSFT",
+   "yahoo": "MSFT",
+   "nome": "Microsoft",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "MU",
+   "yahoo": "MU",
+   "nome": "Micron Technology",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "NEE",
+   "yahoo": "NEE",
+   "nome": "NextEra Energy",
+   "setor": "Utilities"
+  },
+  {
+   "ticker": "NFLX",
+   "yahoo": "NFLX",
+   "nome": "Netflix, Inc.",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "NOW",
+   "yahoo": "NOW",
+   "nome": "ServiceNow",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "NVDA",
+   "yahoo": "NVDA",
+   "nome": "Nvidia",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "ORCL",
+   "yahoo": "ORCL",
+   "nome": "Oracle Corporation",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "PANW",
+   "yahoo": "PANW",
+   "nome": "Palo Alto Networks",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "PEP",
+   "yahoo": "PEP",
+   "nome": "PepsiCo",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "PFE",
+   "yahoo": "PFE",
+   "nome": "Pfizer",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "PG",
+   "yahoo": "PG",
+   "nome": "Procter & Gamble",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "PLTR",
+   "yahoo": "PLTR",
+   "nome": "Palantir Technologies",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "PM",
+   "yahoo": "PM",
+   "nome": "Philip Morris International",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "QCOM",
+   "yahoo": "QCOM",
+   "nome": "Qualcomm",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "RTX",
+   "yahoo": "RTX",
+   "nome": "RTX Corporation",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "SBUX",
+   "yahoo": "SBUX",
+   "nome": "Starbucks",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "SCHW",
+   "yahoo": "SCHW",
+   "nome": "Charles Schwab Corporation",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "SNDK",
+   "yahoo": "SNDK",
+   "nome": "Sandisk",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "SO",
+   "yahoo": "SO",
+   "nome": "Southern Company",
+   "setor": "Utilities"
+  },
+  {
+   "ticker": "T",
+   "yahoo": "T",
+   "nome": "AT&T",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "TMO",
+   "yahoo": "TMO",
+   "nome": "Thermo Fisher Scientific",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "TMUS",
+   "yahoo": "TMUS",
+   "nome": "T-Mobile US",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "TSLA",
+   "yahoo": "TSLA",
+   "nome": "Tesla, Inc.",
+   "setor": "Consumer Discretionary"
+  },
+  {
+   "ticker": "TXN",
+   "yahoo": "TXN",
+   "nome": "Texas Instruments",
+   "setor": "Information Technology"
+  },
+  {
+   "ticker": "UBER",
+   "yahoo": "UBER",
+   "nome": "Uber",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "UNH",
+   "yahoo": "UNH",
+   "nome": "UnitedHealth Group",
+   "setor": "Health Care"
+  },
+  {
+   "ticker": "UNP",
+   "yahoo": "UNP",
+   "nome": "Union Pacific Corporation",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "UPS",
+   "yahoo": "UPS",
+   "nome": "United Parcel Service",
+   "setor": "Industrials"
+  },
+  {
+   "ticker": "USB",
+   "yahoo": "USB",
+   "nome": "U.S. Bancorp",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "V",
+   "yahoo": "V",
+   "nome": "Visa Inc.",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "VZ",
+   "yahoo": "VZ",
+   "nome": "Verizon",
+   "setor": "Communication Services"
+  },
+  {
+   "ticker": "WFC",
+   "yahoo": "WFC",
+   "nome": "Wells Fargo",
+   "setor": "Financials"
+  },
+  {
+   "ticker": "WMT",
+   "yahoo": "WMT",
+   "nome": "Walmart",
+   "setor": "Consumer Staples"
+  },
+  {
+   "ticker": "XOM",
+   "yahoo": "XOM",
+   "nome": "ExxonMobil",
+   "setor": "Energy"
+  }
+ ]
+}

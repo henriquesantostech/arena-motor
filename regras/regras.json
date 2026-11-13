@@ -1,0 +1,36 @@
+{
+ "versao": "1.0",
+ "data": "2026-11-13",
+ "nota": "Regras do jogo (desenho v1.1, cap. 2, 5, 6 e 7). Qualquer mudança fica em regras/mudancas.md e só vale daí para a frente.",
+ "capital_inicial_eur": 100000,
+ "custos": {
+  "comissao_eur": 0,
+  "cambio": 0.0015,
+  "derrapagem": 0.0005,
+  "retencao_dividendos": 0.15
+ },
+ "carteira": {
+  "so_compras": true,
+  "peso_maximo_global": 0.20,
+  "folga_peso": 0.02,
+  "banda_reequilibrio": 0.02,
+  "ordem_minima_eur": 1.0,
+  "acoes_casas_decimais": 6
+ },
+ "dados": {
+  "historico_minimo_dias": 253,
+  "salto_suspeito": 0.25,
+  "dias_sem_dados_para_saida": 5,
+  "media_mercado_dias": 200,
+  "diferenca_maxima_tiingo": 0.02
+ },
+ "medidas": {
+  "dias_por_ano": 252,
+  "imposto_mais_valias": 0.28,
+  "perda_maxima_castigo_a_partir": 0.25,
+  "castigo_por_ponto": 10,
+  "minimo_dias_pontuacao": 20,
+  "merito_dias_minimos": 126,
+  "merito_percentil_macacos": 0.95
+ }
+}
