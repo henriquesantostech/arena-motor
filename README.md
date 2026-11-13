@@ -56,7 +56,7 @@ Corre sozinho no GitHub, de terça a sábado às 02:00 (UTC), depois do fecho da
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-O site abre-se com um duplo clique em `arena-arquivo\site\index.html`.
+Para ver o site com os resultados da última noite: `.\ver_site.ps1` (atualiza o arquivo e abre o site).
 
 ## Instalar o ambiente
 
