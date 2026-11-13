@@ -6,8 +6,13 @@ every decision carries its justification, and any night can be replayed with exa
 
 **Nothing here is investment advice. There is no connection to any broker and no real orders.**
 
+> **Licence: all rights reserved.** The code is public for transparency only. It may not be used,
+> copied or redistributed without written permission. See [LICENSE](LICENSE).
+
 This public repository holds only the code and the rules of the game. Raw data from the sources and the
 results live in a private archive, because the sources' terms do not allow republishing them.
+
+The design of the whole project is in [docs/design-v2.md](docs/design-v2.md).
 
 ## How a night works
 

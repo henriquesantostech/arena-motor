@@ -32,7 +32,7 @@
    "description": "reacts to the tone of the news (arrives in phase 2; until then it reacts to last week's and last month's moves)"
   },
   "Balanced": {
-   "prefix": "Keel",
+   "prefix": "Plumb",
    "description": "a bit of everything, low risk"
   }
  },
@@ -471,7 +471,7 @@
    }
   },
   {
-   "name": "Keel-01",
+   "name": "Plumb-01",
    "type": "agent",
    "species": "Balanced",
    "parents": null,
@@ -498,7 +498,7 @@
    }
   },
   {
-   "name": "Keel-02",
+   "name": "Plumb-02",
    "type": "agent",
    "species": "Balanced",
    "parents": null,
@@ -525,7 +525,7 @@
    }
   },
   {
-   "name": "Keel-03",
+   "name": "Plumb-03",
    "type": "agent",
    "species": "Balanced",
    "parents": null,
@@ -552,7 +552,7 @@
    }
   },
   {
-   "name": "Keel-04",
+   "name": "Plumb-04",
    "type": "agent",
    "species": "Balanced",
    "parents": null,
@@ -806,7 +806,7 @@
    "name": "Monkey-09",
    "type": "monkey",
    "species": "Monkey",
-   "copies_management_of": "Keel-01",
+   "copies_management_of": "Plumb-01",
    "seed_id": "Macaco-09",
    "dna": {
     "weights": {
@@ -834,7 +834,7 @@
    "name": "Monkey-10",
    "type": "monkey",
    "species": "Monkey",
-   "copies_management_of": "Keel-03",
+   "copies_management_of": "Plumb-03",
    "seed_id": "Macaco-10",
    "dna": {
     "weights": {
