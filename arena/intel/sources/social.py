@@ -46,25 +46,30 @@ def _hn(ctx):
 
 
 async def _listen(tickers, seconds):
+    """Counts $CASHTAG posts during a fixed window; reconnects if the stream drops."""
     import websockets
     counts, total = {}, 0
     pat = re.compile(r"\$([A-Z]{1,5}(?:\.[AB])?)\b")
     end = time.monotonic() + seconds
-    async with websockets.connect(JETSTREAM, max_size=2 ** 22, open_timeout=30,
-                                  additional_headers={"User-Agent": http.USER_AGENT}) as ws:
-        while time.monotonic() < end:
-            try:
-                msg = await asyncio.wait_for(ws.recv(), timeout=max(1, end - time.monotonic()))
-            except asyncio.TimeoutError:
-                break
-            ev = json.loads(msg)
-            c = ev.get("commit") or {}
-            if ev.get("kind") != "commit" or c.get("operation") != "create":
-                continue
-            total += 1
-            for t in set(pat.findall((c.get("record") or {}).get("text", ""))):
-                if t in tickers:
-                    counts[t] = counts.get(t, 0) + 1
+    while time.monotonic() < end - 5:
+        try:
+            async with websockets.connect(JETSTREAM, max_size=2 ** 22, open_timeout=30,
+                                          additional_headers={"User-Agent": http.USER_AGENT}) as ws:
+                while time.monotonic() < end:
+                    try:
+                        msg = await asyncio.wait_for(ws.recv(), timeout=max(1, end - time.monotonic()))
+                    except asyncio.TimeoutError:
+                        break
+                    ev = json.loads(msg)
+                    c = ev.get("commit") or {}
+                    if ev.get("kind") != "commit" or c.get("operation") != "create":
+                        continue
+                    total += 1
+                    for t in set(pat.findall((c.get("record") or {}).get("text", ""))):
+                        if t in tickers:
+                            counts[t] = counts.get(t, 0) + 1
+        except (OSError, websockets.exceptions.WebSocketException, asyncio.TimeoutError):
+            await asyncio.sleep(3)
     return counts, total
 
 

@@ -44,14 +44,21 @@ def _events(ctx):
         else (end - timedelta(days=1)).replace(hour=0, minute=0)
     # aggregate complete UTC days only
     agg = defaultdict(lambda: [0, 0, 0.0, 0.0])      # (day, cc) -> events, material conflict, goldstein sum, tone sum
-    last_done, files = cursor, 0
-    for ts in _slots(start, end.replace(hour=0, minute=0)):
-        if ctx.out_of_time():
-            break
+    slots = list(_slots(start, end.replace(hour=0, minute=0)))[:96 * 3]     # at most 3 days per night
+
+    def get(ts):
         try:
-            r = http.get(FILE.format(ts=ts), timeout=60, ok_404=True)
+            return ts, http.get(FILE.format(ts=ts), timeout=60, ok_404=True)
         except http.FetchError:
-            continue
+            return ts, None
+
+    from concurrent.futures import ThreadPoolExecutor
+    last_done, files = cursor, 0
+    with ThreadPoolExecutor(max_workers=8) as pool:      # the file server is slow per request, not rate-limited
+        results = list(pool.map(get, slots))
+    for ts, r in results:
+        if r is None:
+            break                                       # keep order: stop at the first failure, retry next night
         last_done = ts
         if r.status_code != 200:
             continue
@@ -73,13 +80,19 @@ def _events(ctx):
             a[1] += row[29] == "4"                     # QuadClass 4 = material conflict
             a[2] += float(row[30] or 0)                # GoldsteinScale
             a[3] += float(row[34] or 0)                # AvgTone
+    complete = {f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}" for ts in slots if ts <= (last_done or "") and ts.endswith("234500")}
     rows = []
     for (day, cc), (n, conflict, gold, tone) in agg.items():
+        if day not in complete:
+            continue
         nxt = (datetime.fromisoformat(day) + timedelta(days=1)).strftime("%Y-%m-%dT00:15:00Z")
         for sid, v in (("events", n), ("conflict_share", conflict / n), ("goldstein", gold / n), ("tone", tone / n)):
             rows.append({"series_id": f"gdelt:{sid}", "entity_id": f"country:{cc}", "obs_date": day,
                          "value": round(float(v), 6), "published_at": nxt})
-    ctx.store.set_state("gdelt_cursor", last_done)
+    # the cursor only moves by whole days, so a day is always aggregated from all its 96 files
+    whole = [ts for ts in slots if ts <= (last_done or "") and ts.endswith("234500")]
+    if whole:
+        ctx.store.set_state("gdelt_cursor", whole[-1])
     return add_observations(ctx, rows, SOURCE_ID, stable_id(SOURCE_ID, last_done)), files
 
 
