@@ -19,7 +19,7 @@ const emails = (process.env.ARENA_ALLOWED_EMAILS || "").split(/[,;\s]+/).filter(
 const dir = process.argv[2];
 
 const fail = msg => { console.error("STOP: " + msg); process.exit(1); };
-if (!token) fail("missing CLOUDFLARE_API_TOKEN");
+if (!token) { console.log("not configured yet (no CLOUDFLARE_API_TOKEN): nothing published"); process.exit(0); }
 if (!emails.length) fail("missing ARENA_ALLOWED_EMAILS (who may log in)");
 if (!dir || !existsSync(dir + "/index.html") || !existsSync(dir + "/data.js")) fail("site folder not found");
 
