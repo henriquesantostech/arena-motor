@@ -55,7 +55,7 @@ if (!E.GH_OAUTH_CLIENT_ID || !E.GH_OAUTH_CLIENT_SECRET || !users.length || sessi
   process.exit(0);
 }
 
-if (!dir || !existsSync(join(dir, "index.html")) || !existsSync(join(dir, "data.js"))) fail("site folder not found (the nightly run builds it)");
+if (!dir || !existsSync(join(dir, "index.html")) || !existsSync(join(dir, "data", "arena.json"))) fail("site folder not found (the nightly run builds it)");
 
 // 2. Gate settings, as encrypted project secrets (production and previews)
 const vars = {
@@ -81,7 +81,7 @@ upload(dir);
 
 // 4. Check from outside (the address and the deployment's own address): page and data must ask for a login.
 async function gated(base) {
-  for (const path of ["/", "/data.js", "/app.js"]) {
+  for (const path of ["/", "/data/arena.json", "/index.html", "/favicon.svg"]) {
     let ok = false;
     for (let i = 0; i < 6 && !ok; i++) {
       const r = await fetch(base + path, { redirect: "manual" }).catch(() => null);
@@ -96,7 +96,7 @@ const latest = ((await cf("GET", `/accounts/${acc}/pages/projects/${PROJECT}/dep
 if (!(await gated(`https://${host}`)) || (latest && latest.url && !(await gated(latest.url)))) {
   const closed = mkdtempSync(join(tmpdir(), "arena-closed-"));
   writeFileSync(join(closed, "index.html"), "<!doctype html><meta name=robots content=noindex><title>Closed</title><p>Closed.</p>");
-  writeFileSync(join(closed, "data.js"), "");
+  mkdirSync(join(closed, "data")); writeFileSync(join(closed, "data", "arena.json"), "{}");
   upload(closed);
   fail("the site answered without a login: replaced by a closed page. Check the sign-in.");
 }

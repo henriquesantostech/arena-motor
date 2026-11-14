@@ -1,8 +1,10 @@
-"""Builds the website from the journal (design ch. 9).
+"""Builds the website from the journal (design ch. 9, Experience v2).
 
-The site is static: the built files in site/dist (index.html, app.js, arena3d.js, style.css, ...)
-are copied next to a generated data.js (window.ARENA = {...}). data.js lives only in the private
-archive. Opening site/index.html from disk also works (no server needed).
+The site is static: the built app in site/dist is copied next to generated data, which lives only in
+the private archive (and online only behind the login):
+  data/arena.json            everything the one-look page and the cards need, as of the last night
+  data/days/YYYY-MM-DD.json  one shard per night for the Time Machine: values, holdings, trades,
+                             market and the journal's fingerprints (provenance)
 """
 import json
 import re
@@ -11,14 +13,12 @@ import shutil
 from . import config
 from .metrics import INDEX, indicators, label
 
-# Species in the order of rules/population.json -> stable keys used by the site (colours, 3D sectors).
-SPECIES_KEYS = ["trend", "contrarian", "value", "news", "balanced"]
-SPECIES_EN = {   # short labels for the one-look page (full descriptions live in rules/population.json)
-    "trend": ("Trend", "Buys what is rising"),
-    "contrarian": ("Contrarian", "Buys what fell too far"),
-    "value": ("Value", "Good, cheap companies; trades little"),
-    "news": ("News", "Reacts to the news"),
-    "balanced": ("Balanced", "A bit of everything, low risk"),
+# Species keys = their prefix in lower case (arrow, wave, rock, echo, plumb, later mirror, compass): stable
+# across renames of the long names and used by the site for colours and 3D sectors.
+SPECIES_ABOUT = {   # short one-liners for the page (full descriptions live in rules/population.json)
+    "arrow": "Buys what is rising", "wave": "Buys what fell too far", "rock": "Good, cheap companies; trades little",
+    "echo": "Reacts to the news", "plumb": "A bit of everything, low risk",
+    "mirror": "Copies insiders and politicians", "compass": "Follows the macro picture",
 }
 TYPE = {"agent": "agent", "monkey": "monkey", "index": "index", "equal_weight": "equal"}
 SIGNAL_LABEL = {
@@ -30,16 +30,40 @@ LOG_MAX = 20          # moves per participant kept in the site (the full journal
 DIST = config.SITE_TEMPLATE_DIR / "dist"
 
 
+def _dump(obj):
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+
+
 def build(archive):
     out = archive.root / "site"
-    data = build_data(archive, archive.journal_days())   # first: a failure leaves the old site intact
+    days = archive.journal_days()
+    data = build_data(archive, days)   # first: a failure leaves the old site intact
+    shards = {d: _shard(archive.read_journal(d)) for d in days}
     out.mkdir(parents=True, exist_ok=True)
     for f in out.iterdir():   # empty the folder (old files from earlier versions must not linger)
         shutil.rmtree(f) if f.is_dir() else f.unlink()
     shutil.copytree(DIST, out, dirs_exist_ok=True)
-    text = "window.ARENA=" + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n"
-    (out / "data.js").write_text(text, encoding="utf-8", newline="\n")
+    (out / "data" / "days").mkdir(parents=True, exist_ok=True)
+    (out / "data" / "arena.json").write_text(_dump(data), encoding="utf-8", newline="\n")
+    for d, sh in shards.items():
+        (out / "data" / "days" / f"{d}.json").write_text(_dump(sh), encoding="utf-8", newline="\n")
     return data
+
+
+def _shard(j):
+    """One night, as it was known then: what the Time Machine replays."""
+    st = j["state"]["participants"]
+    return {
+        "date": j["date"], "version": j.get("version"), "inputs": j.get("inputs"),
+        "market": j.get("market"), "excluded": (j.get("checks") or {}).get("excluded", []),
+        "values": {_slug(n): round(v, 2) for n, v in j["values"].items()},
+        "cash": {_slug(n): round(p["cash"], 2) for n, p in st.items()},
+        "positions": {_slug(n): {t: round(pos["shares"], 6) for t, pos in p["positions"].items()} for n, p in st.items()},
+        "fills": [{"id": _slug(n), "k": f["side"], "t": f["ticker"], "eur": f["eur"]}
+                  for n, dec in j["decisions"].items() for f in dec["fills"]],
+        "pending": {_slug(n): len(p["pending"]) for n, p in st.items() if p["pending"]},
+        "rule_changes": j.get("rule_changes"),
+    }
 
 
 def _slug(name):
@@ -52,12 +76,12 @@ def _r(x, c=6):
 
 def build_data(archive, days):
     cfg = archive.cfg
-    species_names = list(config.POPULATION["species"].keys())
-    sp_key = {e: SPECIES_KEYS[i] if i < len(SPECIES_KEYS) else f"s{i}" for i, e in enumerate(species_names)}
+    sp_all = config.POPULATION["species"]
+    sp_key = {e: (v.get("prefix") or e).lower() for e, v in sp_all.items()}
     meta = {"mode": "live" if cfg.get("mode") == "official" else "trial", "dayZero": cfg.get("day_zero"),
             "capital": config.CAPITAL, "rules": config.RULES_VERSION, "engine": config.ENGINE_VERSION}
-    species = {sp_key[e]: {"label": SPECIES_EN.get(sp_key[e], (e, ""))[0], "about": SPECIES_EN.get(sp_key[e], ("", ""))[1]}
-               for e in species_names}
+    species = {sp_key[e]: {"label": v.get("prefix") or e, "family": e, "about": SPECIES_ABOUT.get(sp_key[e], v.get("description", ""))}
+               for e, v in sp_all.items()}
     if not days:
         return {"meta": {**meta, "updated": None, "dates": []}, "species": species, "p": [], "band": [], "day": None}
 

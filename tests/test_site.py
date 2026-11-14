@@ -1,4 +1,4 @@
-"""The website build: data.js has everything the one-look page and the cards need."""
+"""The website build: data/arena.json has everything the page and the cards need; data/days/ one shard per night."""
 import json
 
 from arena.night import process
@@ -8,9 +8,7 @@ from test_engine import make_archive
 
 
 def _data(root):
-    text = (root / "site" / "data.js").read_text(encoding="utf-8")
-    assert text.startswith("window.ARENA=")
-    return json.loads(text[len("window.ARENA="):].rstrip().rstrip(";"))
+    return json.loads((root / "site" / "data" / "arena.json").read_text(encoding="utf-8"))
 
 
 def test_site_builds_with_everything(tmp_path):
@@ -18,8 +16,13 @@ def test_site_builds_with_everything(tmp_path):
     process(arch)
     build(arch)
     out = tmp_path / "a" / "site"
-    for f in ("index.html", "app.js", "arena3d.js", "style.css", "_headers", "data.js"):
+    for f in ("index.html", "_headers", "favicon.svg", "data/arena.json"):
         assert (out / f).exists(), f
+    assert any((out / "assets").glob("*.js")), "built app"
+    shards = sorted((out / "data" / "days").glob("*.json"))
+    assert [s.stem for s in shards] == arch.journal_days()
+    sh = json.loads(shards[-1].read_text(encoding="utf-8"))
+    assert sh["date"] == shards[-1].stem and len(sh["values"]) == 32 and "inputs" in sh and "positions" in sh
     d = _data(tmp_path / "a")
     kinds = [p["type"] for p in d["p"]]
     assert kinds.count("agent") == 20 and kinds.count("monkey") == 10

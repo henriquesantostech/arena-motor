@@ -1,0 +1,47 @@
+# Site quality gate on every change to the site: type check, build, size budget, the built files in
+# site/dist must match the sources, login gate tests, and a speed check in a real headless browser
+# with synthetic data (no market data in this public repository).
+name: site-build
+
+on:
+  push:
+    paths: ["site/**", ".github/workflows/site-build.yml"]
+  pull_request:
+    paths: ["site/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Type check, build and size budget
+        run: npm run build
+
+      - name: Built files match the sources
+        run: git diff --exit-code -- dist || (echo "site/dist is out of date: run npm run build and commit dist" && exit 1)
+
+      - name: Login gate tests
+        run: npm test
+
+      - name: Speed budget (headless Chromium)
+        run: |
+          npx playwright-core install --with-deps chromium > /dev/null
+          npm run perf

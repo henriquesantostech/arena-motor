@@ -7,6 +7,9 @@ on:
   workflow_run:
     workflows: [nightly]
     types: [completed]
+  push:   # a new version of the site goes live at once
+    branches: [main]
+    paths: ["site/dist/**", "site/functions/**", "site/publish.mjs", "arena/site.py"]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +21,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,6 +34,17 @@ jobs:
           repository: henriquesantostech/arena-arquivo
           path: archive
           ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Rebuild the site with this version of the app (the archive is not changed)
+        run: |
+          pip install -q -r requirements.txt
+          python -m arena site --archive archive
 
       - name: Node
         uses: actions/setup-node@v4
