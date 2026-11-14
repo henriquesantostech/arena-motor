@@ -69,7 +69,7 @@ def _context(con, T):
              "filing:8-K": 2, "news": 2}
     if len(docs):
         docs = docs.assign(o=docs["kind"].map(lambda k: order.get(k, 5))).sort_values(["o", "published_at", "doc_id"])
-        for d in docs.head(160).itertuples():
+        for d in docs.head(120).itertuples():
             text = summ.get(d.doc_id) or d.title or ""
             lines.append(f"[{d.doc_id}] {d.published_at[:16]} {d.kind}: {text[:220]}")
     return "\n".join(lines), set(docs["doc_id"]) if len(docs) else set()
@@ -84,8 +84,8 @@ def write_brief(store, models, T=None):
     rc = cfg()["readers"]["brief"]
     con = store.connect()
     ctx, ids = _context(con, T)
-    with Server(models or "models", rc["file"], port=8092, ctx=12288) as srv:
-        raw, timings = srv.chat(SYSTEM, f"Brief date (as of): {T}\n\n{ctx}", SCHEMA, max_tokens=1800)
+    with Server(models or "models", rc["file"], port=8092, ctx=16384) as srv:
+        raw, timings = srv.chat(SYSTEM, f"Brief date (as of): {T}\n\n{ctx}", SCHEMA, max_tokens=1500)
         runtime = srv.runtime
     try:
         out = json.loads(raw)

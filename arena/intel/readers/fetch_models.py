@@ -57,15 +57,10 @@ def main(argv=None):
             tgz = out / rt["asset"]
             print("llama", _download(rt["url"], tgz, rt["sha256"]))
             target = out / "llama"
-            if not (target / "llama-server").exists():
+            if not list(target.glob("*/llama-server")):
                 target.mkdir(exist_ok=True)
                 with tarfile.open(tgz) as t:
-                    for m in t.getmembers():
-                        if m.isfile():
-                            m.name = Path(m.name).name          # flatten build/bin/...
-                            t.extract(m, target, filter="data")
-                for f in target.iterdir():
-                    f.chmod(0o755)
+                    t.extractall(target, filter="data")      # keeps the shared-library symlinks
         else:
             rc = c["readers"][name]
             print(name, _download(HF.format(repo=rc["model"], file=rc["file"]), out / rc["file"], rc["sha256"]))

@@ -35,15 +35,19 @@ class Server:
         rt = cfg()["runtime"]["llama_cpp"]
         self.flags = rt["flags"]
         self.port = port
-        binary = os.environ.get("LLAMA_SERVER") or str(Path(models_dir) / "llama" / "llama-server")
+        found = sorted((Path(models_dir) / "llama").glob("*/llama-server")) + \
+            sorted((Path(models_dir) / "llama").glob("llama-server"))
+        binary = os.environ.get("LLAMA_SERVER") or (str(found[0]) if found else "llama-server")
+        env = dict(os.environ, LD_LIBRARY_PATH=f"{Path(binary).parent}:{os.environ.get('LD_LIBRARY_PATH', '')}")
         args = [binary, "-m", str(Path(models_dir) / model_file), "--port", str(port), "--host", "127.0.0.1",
                 "-t", str(self.flags["threads"]), "-b", str(self.flags["batch"]), "-c", str(ctx or self.flags["ctx"]),
-                "--seed", str(self.flags["seed"]), "-np", "1", "--no-webui"]
+                "--seed", str(self.flags["seed"]), "-np", "1", "--no-webui", "--jinja"]
         if embedding:
             args += ["--embedding", "--pooling", "mean", "-ub", "2048", "-b", "2048"]
         self.runtime = {"llama_cpp": rt["release"], "threads": self.flags["threads"], "batch": self.flags["batch"],
                         "seed": self.flags["seed"], "cpu": cpu_flags()}
-        self.proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.log = Path(models_dir) / f"llama-server-{port}.log"   # server log: model metadata only, no data
+        self.proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=open(self.log, "w"), env=env)
         self.url = f"http://127.0.0.1:{port}"
         for _ in range(600):
             try:
@@ -52,7 +56,8 @@ class Server:
             except requests.RequestException:
                 pass
             if self.proc.poll() is not None:
-                raise RuntimeError("llama-server exited")
+                tail = self.log.read_text(errors="ignore").strip().splitlines()[-3:]
+                raise RuntimeError("llama-server exited: " + " | ".join(t[:160] for t in tail))
             time.sleep(1)
         raise RuntimeError("llama-server not ready")
 
