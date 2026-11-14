@@ -87,6 +87,10 @@
 
   function podium() {
     if (!ranked.length) { $("#podium").innerHTML = ""; return; }
+    if (!moved) {   // day zero: nobody has traded yet, so no podium
+      $("#podium").innerHTML = `<div class="pod-wrap"><div class="pod-cap">Podium</div><div class="step glass" style="width:auto;cursor:default;padding:12px 18px"><div class="who">Everyone starts at ${eur(model.capital)}</div><div class="mute" style="font-size:12px;margin-top:4px">First trades at the next market open</div></div></div>`;
+      return;
+    }
     const top = [ranked[1], ranked[0], ranked[2]].filter(Boolean);
     const anyMerit = ranked.slice(0, 3).some(p => p.merit);
     $("#podium").innerHTML = `<div class="pod-wrap"><div class="pod-cap">${anyMerit ? "Podium" : "Podium · provisional"}</div><div style="display:flex;align-items:flex-end;gap:10px">` +
