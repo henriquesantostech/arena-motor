@@ -38,7 +38,9 @@ jobs:
           cache: pip
 
       - name: Libraries
-        run: pip install -q -r requirements.txt
+        run: |
+          pip install -q -r requirements.txt
+          if [ -f requirements-intel.txt ]; then pip install -q -r requirements-intel.txt; fi   # lets the Signal Lab read phase 2 Parquet
 
       - name: Night (fetch, check, fill, decide, journal, site)
         env:
@@ -58,7 +60,11 @@ jobs:
           git add -A
           if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
           git commit -q -m "night $(date -u +%Y-%m-%d)"
-          git push -q
+          for i in 1 2 3; do   # the intel workflow writes to the same archive (intel/ only)
+            git pull --rebase -q && git push -q && exit 0
+            sleep 15
+          done
+          exit 1
 
       - name: Keep the scheduled workflow enabled
         if: github.event_name == 'schedule'

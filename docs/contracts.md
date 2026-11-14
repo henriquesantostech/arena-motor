@@ -44,6 +44,9 @@ correct by writing a new row with a later `recorded_at`.
 | `published_at` | when the world could know the underlying information (ISO 8601 UTC, e.g. `2026-11-16T21:05:00Z`) |
 | `recorded_at` | when we stored the value (ISO 8601 UTC) |
 
+Phase 2 may also write the same columns as Parquet under `intel/tables/signals/YYYY/*.parquet`; the lab reads
+them when pyarrow is installed (the nightly run installs `requirements-intel.txt` when present).
+
 **Point-in-time rule.** A value counts for day D only if `published_at <= cutoff(D)` and
 `recorded_at <= cutoff(D)`, where `cutoff(D)` is `inputs.cutoff` of the journal of night D (UTC).
 For the same (`date`, `ticker`, `signal_id`), the row with the latest `recorded_at` before the cutoff wins.
@@ -65,6 +68,10 @@ observation (`registered_on <= first date`, otherwise the pre-registration gate 
  "owner": "intel"
 }
 ```
+
+Phase 2 may instead list its pre-registrations in `rules/signals_shadow.json` (`{"signals": [{"id", "family",
+"hypothesis", "expected_sign", "horizon_days", "data", "registered_on", ...}]}`); `id` is the signal id used in
+the shadow table, `admission_test` defaults to gates_v1 and `owner` to intel.
 
 `expected_sign` is 1 or -1; `horizon_days` is an integer in trading days (1–126); `data` lists registry ids.
 Registration files are never edited after the first observation; a changed hypothesis is a new signal id.

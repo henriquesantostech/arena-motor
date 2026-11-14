@@ -38,11 +38,22 @@ ROUND_TRIP = 2 * (config.FX_COST + config.SLIPPAGE)
 
 
 # --- registrations --------------------------------------------------------------------
+SHADOW_REGISTRY = config.RULES_DIR / "signals_shadow.json"   # phase 2 pre-registrations (list form)
+
+
 def registrations():
+    """One file per signal in rules/signals/, plus the list in rules/signals_shadow.json (phase 2)."""
     out = {}
     for p in sorted(REGISTRATION_DIR.glob("*.json")):
         r = json.loads(p.read_text(encoding="utf-8"))
         out[r["signal_id"]] = r
+    if SHADOW_REGISTRY.exists():
+        for s in json.loads(SHADOW_REGISTRY.read_text(encoding="utf-8")).get("signals", []):
+            sid = s.get("signal_id") or s.get("id")
+            if not sid or sid.startswith("price."):
+                continue
+            out[sid] = {"signal_id": sid, "admission_test": "gates_v1", "owner": "intel", **s}
+            out[sid]["signal_id"] = sid
     return out
 
 
@@ -70,12 +81,17 @@ def load_signals(archive):
             for name, v in s["z"].items():
                 rows.append((d, t, f"price.{name}", float(v)))
     price = pd.DataFrame(rows, columns=["date", "ticker", "signal_id", "value"])
-    files = sorted((archive.root / "intel" / "signals" / "shadow").glob("*/*.csv"))
-    if not files:
+    text = {"date": str, "ticker": str, "signal_id": str, "published_at": str, "recorded_at": str}
+    frames = [pd.read_csv(f, dtype=text) for f in sorted((archive.root / "intel" / "signals" / "shadow").glob("*/*.csv"))]
+    parquet = sorted((archive.root / "intel" / "tables" / "signals").glob("*/*.parquet"))
+    if parquet:
+        try:   # Parquet needs pyarrow (installed in the nightly run from requirements-intel.txt)
+            frames += [pd.read_parquet(f).astype({k: str for k in text}) for f in parquet]
+        except ImportError:
+            pass
+    if not frames:
         return price, cutoffs
-    ext = pd.concat([pd.read_csv(f, dtype={"date": str, "ticker": str, "signal_id": str,
-                                            "published_at": str, "recorded_at": str}) for f in files],
-                    ignore_index=True)
+    ext = pd.concat(frames, ignore_index=True)
     ext = ext[SHADOW_COLUMNS]
     ext = ext[ext["date"].isin(cutoffs)]
     cut = ext["date"].map(cutoffs)
