@@ -36,7 +36,8 @@ jobs:
         run: npm run build
 
       - name: Built files match the sources
-        run: git diff --exit-code -- dist || (echo "site/dist is out of date: run npm run build and commit dist" && exit 1)
+        run: |
+          git diff --exit-code -- dist || (echo "site/dist is out of date - run npm run build and commit dist" && exit 1)
 
       - name: Login gate tests
         run: npm test
