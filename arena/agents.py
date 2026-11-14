@@ -4,6 +4,7 @@ Agents score companies with their DNA weights. Monkeys use the same management, 
 Benchmarks buy on day one and never trade again.
 Every justification is generated from the numbers that drove the decision.
 """
+import bisect
 import hashlib
 
 import numpy as np
@@ -128,12 +129,23 @@ def _decide_manager(part, day, view, rate, V, z, raw, excluded, delisted, market
     band = config.PORTFOLIO["rebalance_band"]
     if review and n_elig:
         N = dna["n_holdings"]
+        band_k = dna.get("rank_band")
+        min_hold = dna.get("min_hold_days", 0)
         book = [t for t in pos if t not in sold]
-        swaps = {}
-        candidates = [t for t in ranking if t not in book and t not in sold]
+        swaps, band_exits = {}, {}
+        if band_k is not None:
+            # Rules v1.1: a holding leaves only below rank N + band, and only after the minimum holding period
+            days_list = view.trading_days
+            for t in sorted(book):
+                if t in rank and rank[t] > N + band_k:
+                    held = bisect.bisect_right(days_list, day) - bisect.bisect_right(days_list, pos[t]["since"])
+                    if held >= min_hold:
+                        band_exits[t] = held
+            book = [t for t in book if t not in band_exits]
+        candidates = [t for t in ranking if t not in book and t not in sold and t not in band_exits]
         while len(book) < N and candidates:
             book.append(candidates.pop(0))
-        while candidates:
+        while band_k is None and candidates:
             movable = [t for t in book if t in rank]
             if not movable:
                 break
@@ -155,6 +167,11 @@ def _decide_manager(part, day, view, rate, V, z, raw, excluded, delisted, market
             if t in sold or t in book:
                 continue
             new = swaps.get(t)
+            if t in band_exits:
+                text = (f"Exit: fell to {ordinal(rank[t])}, below the top {N} + band of {band_k}, "
+                        f"after {band_exits[t]} trading days held (minimum {min_hold}).")
+                sell(t, pos[t]["shares"], True, text, "rank_band")
+                continue
             text = (f"Exit: fell to {ordinal(rank[t])}; replaced by {new} "
                     f"({num(float(sc[new]))} vs {num(float(sc[t]))}, a gap above the {num(dna['threshold'])} threshold)."
                     if new else "Exit: left the portfolio.")

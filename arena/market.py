@@ -23,12 +23,20 @@ def floor_shares(x):
     return math.floor(x * f + 1e-9) / f
 
 
+def dna_at(dna, day):
+    """The DNA as the rules stood on `day`: fields of later DNA updates are left out."""
+    if dna is None:
+        return None
+    later = {f for u in config.RULES.get("dna_updates", []) if u["effective_from"] > day for f in u["fields"]}
+    return {k: v for k, v in dna.items() if k not in later}
+
+
 def new_participant(p, day):
     return {
         "name": p["name"], "type": p["type"], "species": p["species"],
         "parents": p.get("parents"), "copies_management_of": p.get("copies_management_of"),
         "seed_id": p.get("seed_id"),
-        "dna": p["dna"], "born": day, "days": 0,
+        "dna": dna_at(p["dna"], day), "born": day, "days": 0,
         "cash": config.CAPITAL, "positions": {}, "pending": [],
         "totals": {"costs": 0.0, "dividends": 0.0, "buys_eur": 0.0, "sells_eur": 0.0,
                    "closed": 0, "winners": 0, "realized_gains": {}},

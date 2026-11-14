@@ -228,3 +228,21 @@ def test_signal_lab_point_in_time(tmp_path, monkeypatch):
     rep = lab.run(archive)
     assert rep["signals"]["test.oracle"]["mean_ic"] > 0.99
     assert rep["signals"]["price.mom_12m"]["observations"] > 0
+
+
+def test_dna_update_takes_effect_on_its_date(tmp_path, monkeypatch):
+    """Rules v1.1 fields reach living participants on the effective date; nights replay across the boundary."""
+    archive, days = make_archive(tmp_path / "a")
+    upd = [dict(config.RULES["dna_updates"][0], effective_from=days[280])]
+    monkeypatch.setitem(config.RULES, "dna_updates", upd)
+    process(archive)
+    before = archive.read_journal(days[279])
+    on = archive.read_journal(days[280])
+    assert "rank_band" not in before["state"]["participants"]["Arrow-01"]["dna"]
+    assert on["state"]["participants"]["Arrow-01"]["dna"]["rank_band"] == 10
+    assert len(on["rule_changes"]) == 30 and "rule_changes" not in before
+    for d in (days[279], days[280], days[-1]):
+        assert replay(archive, d)["identical"]
+    causes = {f["reason"].get("cause") for d in days[281:] for p in archive.read_journal(d)["decisions"].values()
+              for f in p["fills"]}
+    assert "swap" not in causes   # after v1.1 exits come from the rank band, not the score threshold

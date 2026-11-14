@@ -1,5 +1,5 @@
 {
- "version": "1.0",
+ "version": "1.1",
  "date": "2026-11-13",
  "note": "Rules of the game (design v1.1, ch. 2, 5, 6 and 7). Any change is logged in rules/changes.md and applies only from then on.",
  "initial_capital_eur": 100000,
@@ -32,5 +32,16 @@
   "min_days_for_score": 20,
   "merit_min_days": 126,
   "merit_monkey_percentile": 0.95
- }
+ },
+ "dna_updates": [
+  {
+   "version": "1.1",
+   "effective_from": "2026-11-16",
+   "fields": [
+    "min_hold_days",
+    "rank_band"
+   ],
+   "reason": "Design v2 §7.1: with ~0.4% per round trip, weekly turnover costs ~20% a year. A minimum holding period and a rank band cut turnover; existing participants receive the fields on the effective date."
+  }
+ ]
 }

@@ -1,5 +1,5 @@
 {
- "version": "1.0",
+ "version": "1.1",
  "generation": 1,
  "signals": [
   "mom_1m",
@@ -36,7 +36,7 @@
    "description": "a bit of everything, low risk"
   }
  },
- "note": "Weights in % (they add up to 100). News, value and quality stay at 0 until phase 2. Monkeys copy an agent's management (number of holdings, review, threshold, cuts) but pick at random. seed_id is the frozen identifier of each monkey's random draw, so renaming never changes the draws.",
+ "note": "Weights in % (they add up to 100). News, value and quality stay at 0 until phase 2. Monkeys copy an agent's management (number of holdings, review, threshold, cuts) but pick at random. seed_id is the frozen identifier of each monkey's random draw, so renaming never changes the draws. From rules v1.1 (2026-11-16): min_hold_days (10-60 trading days) and rank_band — a held stock leaves only when it falls below rank n_holdings + rank_band and has been held at least min_hold_days (stop loss excepted).",
  "participants": [
   {
    "name": "Arrow-01",
@@ -62,7 +62,9 @@
     "review_days": 5,
     "threshold": 0.5,
     "stop_loss": 0.12,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 20,
+    "rank_band": 10
    }
   },
   {
@@ -89,7 +91,9 @@
     "review_days": 10,
     "threshold": 0.3,
     "stop_loss": null,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 40,
+    "rank_band": 15
    }
   },
   {
@@ -116,7 +120,9 @@
     "review_days": 5,
     "threshold": 0.7,
     "stop_loss": 0.1,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 15,
+    "rank_band": 8
    }
   },
   {
@@ -143,7 +149,9 @@
     "review_days": 21,
     "threshold": 0.3,
     "stop_loss": 0.15,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 60,
+    "rank_band": 20
    }
   },
   {
@@ -170,7 +178,9 @@
     "review_days": 5,
     "threshold": 0.5,
     "stop_loss": 0.15,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 10,
+    "rank_band": 10
    }
   },
   {
@@ -197,7 +207,9 @@
     "review_days": 10,
     "threshold": 0.4,
     "stop_loss": null,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 20,
+    "rank_band": 15
    }
   },
   {
@@ -224,7 +236,9 @@
     "review_days": 3,
     "threshold": 0.8,
     "stop_loss": 0.1,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 10,
+    "rank_band": 8
    }
   },
   {
@@ -251,7 +265,9 @@
     "review_days": 10,
     "threshold": 0.5,
     "stop_loss": 0.12,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 25,
+    "rank_band": 12
    }
   },
   {
@@ -278,7 +294,9 @@
     "review_days": 21,
     "threshold": 0.5,
     "stop_loss": null,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 40,
+    "rank_band": 15
    }
   },
   {
@@ -305,7 +323,9 @@
     "review_days": 21,
     "threshold": 0.6,
     "stop_loss": null,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 60,
+    "rank_band": 20
    }
   },
   {
@@ -332,7 +352,9 @@
     "review_days": 42,
     "threshold": 0.8,
     "stop_loss": null,
-    "brake": 0.3
+    "brake": 0.3,
+    "min_hold_days": 60,
+    "rank_band": 20
    }
   },
   {
@@ -359,7 +381,9 @@
     "review_days": 21,
     "threshold": 0.5,
     "stop_loss": 0.2,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 40,
+    "rank_band": 12
    }
   },
   {
@@ -386,7 +410,9 @@
     "review_days": 5,
     "threshold": 0.4,
     "stop_loss": 0.1,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 10,
+    "rank_band": 10
    }
   },
   {
@@ -413,7 +439,9 @@
     "review_days": 5,
     "threshold": 0.5,
     "stop_loss": 0.12,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 15,
+    "rank_band": 12
    }
   },
   {
@@ -440,7 +468,9 @@
     "review_days": 3,
     "threshold": 0.6,
     "stop_loss": 0.08,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 10,
+    "rank_band": 8
    }
   },
   {
@@ -467,7 +497,9 @@
     "review_days": 10,
     "threshold": 0.4,
     "stop_loss": null,
-    "brake": 0.3
+    "brake": 0.3,
+    "min_hold_days": 20,
+    "rank_band": 15
    }
   },
   {
@@ -494,7 +526,9 @@
     "review_days": 10,
     "threshold": 0.4,
     "stop_loss": 0.15,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 30,
+    "rank_band": 15
    }
   },
   {
@@ -521,7 +555,9 @@
     "review_days": 21,
     "threshold": 0.3,
     "stop_loss": null,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 60,
+    "rank_band": 25
    }
   },
   {
@@ -548,7 +584,9 @@
     "review_days": 10,
     "threshold": 0.5,
     "stop_loss": 0.12,
-    "brake": 0.3
+    "brake": 0.3,
+    "min_hold_days": 30,
+    "rank_band": 15
    }
   },
   {
@@ -575,7 +613,9 @@
     "review_days": 21,
     "threshold": 0.5,
     "stop_loss": 0.15,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 45,
+    "rank_band": 20
    }
   },
   {
@@ -603,7 +643,9 @@
     "review_days": 5,
     "threshold": 0.5,
     "stop_loss": 0.12,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 20,
+    "rank_band": 10
    }
   },
   {
@@ -631,7 +673,9 @@
     "review_days": 5,
     "threshold": 0.7,
     "stop_loss": 0.1,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 15,
+    "rank_band": 8
    }
   },
   {
@@ -659,7 +703,9 @@
     "review_days": 5,
     "threshold": 0.5,
     "stop_loss": 0.15,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 10,
+    "rank_band": 10
    }
   },
   {
@@ -687,7 +733,9 @@
     "review_days": 3,
     "threshold": 0.8,
     "stop_loss": 0.1,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 10,
+    "rank_band": 8
    }
   },
   {
@@ -715,7 +763,9 @@
     "review_days": 21,
     "threshold": 0.5,
     "stop_loss": null,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 40,
+    "rank_band": 15
    }
   },
   {
@@ -743,7 +793,9 @@
     "review_days": 42,
     "threshold": 0.8,
     "stop_loss": null,
-    "brake": 0.3
+    "brake": 0.3,
+    "min_hold_days": 60,
+    "rank_band": 20
    }
   },
   {
@@ -771,7 +823,9 @@
     "review_days": 5,
     "threshold": 0.4,
     "stop_loss": 0.1,
-    "brake": 0.0
+    "brake": 0.0,
+    "min_hold_days": 10,
+    "rank_band": 10
    }
   },
   {
@@ -799,7 +853,9 @@
     "review_days": 3,
     "threshold": 0.6,
     "stop_loss": 0.08,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 10,
+    "rank_band": 8
    }
   },
   {
@@ -827,7 +883,9 @@
     "review_days": 10,
     "threshold": 0.4,
     "stop_loss": 0.15,
-    "brake": 0.5
+    "brake": 0.5,
+    "min_hold_days": 30,
+    "rank_band": 15
    }
   },
   {
@@ -855,7 +913,9 @@
     "review_days": 10,
     "threshold": 0.5,
     "stop_loss": 0.12,
-    "brake": 0.3
+    "brake": 0.3,
+    "min_hold_days": 30,
+    "rank_band": 15
    }
   },
   {

@@ -112,6 +112,24 @@ def current_cutoff(archive):
                 if len(archive.read(n))), default="")
 
 
+def apply_dna_updates(state, day):
+    """Rule changes to the DNA take effect on their date for participants alive then (logged in the journal)."""
+    population = {p["name"]: p for p in config.POPULATION["participants"]}
+    applied = []
+    for u in config.RULES.get("dna_updates", []):
+        if u["effective_from"] > day:
+            continue
+        for name, part in state["participants"].items():
+            dna, src = part.get("dna"), population.get(name, {}).get("dna")
+            if not dna or not src:
+                continue
+            new = {f: src[f] for f in u["fields"] if f not in dna and f in src}
+            if new:
+                dna.update(new)
+                applied.append({"participant": name, "rules_version": u["version"], "fields": new})
+    return applied
+
+
 # --- process one day -------------------------------------------------------------------
 def process_day(archive, day, prev_state, cutoff=None):
     cutoff = cutoff or current_cutoff(archive)
@@ -130,6 +148,7 @@ def process_day(archive, day, prev_state, cutoff=None):
         prev_fp = fingerprint(prev_state)
         state = copy.deepcopy(prev_state)
         state["date"] = day
+    rule_changes = apply_dna_updates(state, day) if prev_state is not None else []
 
     decisions = {}
     events_today = view.events_on(day)
@@ -179,7 +198,7 @@ def process_day(archive, day, prev_state, cutoff=None):
                        "raw": {s: (None if pd.isna(raw.loc[t, s]) else float(raw.loc[t, s]))
                                for s in config.PRICE_SIGNALS}}
                    for t in z.index}
-    return {
+    package = {
         "date": day,
         "mode": archive.cfg.get("mode", "trial"),
         "version": {"engine": config.ENGINE_VERSION, "rules": config.RULES_VERSION, "code": code_version()},
@@ -191,6 +210,9 @@ def process_day(archive, day, prev_state, cutoff=None):
         "values": values,
         "state": state,
     }
+    if rule_changes:   # only on the nights a rule change takes effect
+        package["rule_changes"] = rule_changes
+    return package
 
 
 def process(archive, until=None, on_done=None):
