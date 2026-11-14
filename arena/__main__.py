@@ -8,6 +8,7 @@
   site      builds the site from the journal
   audit     one participant's accounts, step by step, to check by hand
   sources   lists the registered data sources and their terms
+  monkeys   1,000 offline monkeys with the agents' turnover (luck band, best of N)
   lab       Signal Lab: daily IC and admission gates for every signal (shadow only)
 """
 import argparse
@@ -24,7 +25,7 @@ from .archive import Archive
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="arena", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["create", "fetch", "process", "night", "replay", "site", "audit", "sources", "lab"])
+    ap.add_argument("command", choices=["create", "fetch", "process", "night", "replay", "site", "audit", "sources", "lab", "monkeys"])
     ap.add_argument("--archive", help="private archive folder")
     ap.add_argument("--day-zero", help="create: last trading day before the first trading day")
     ap.add_argument("--mode", default="trial", choices=["trial", "official"])
@@ -69,6 +70,11 @@ def main(argv=None):
             build(archive)
             print("site built")
             return 0
+        if a.command == "monkeys":
+            from .monkeys import run as run_monkeys
+            m = run_monkeys(archive)
+            print(f"offline monkeys: {m.get('monkeys', 0)}, up to {m.get('date')}, replay identical: {m.get('replay_identical')}")
+            return 0 if m.get("replay_identical", True) else 1
         if a.command == "lab":
             from .lab import run as run_lab
             rep = run_lab(archive)
@@ -111,6 +117,12 @@ def night(archive, now):
     r = fetch(archive)
     days = process(archive)
     site_ok = True
+    try:
+        from .monkeys import run as run_monkeys
+        m = run_monkeys(archive)
+        print(f"offline monkeys: {m.get('monkeys', 0)}, replay identical: {m.get('replay_identical')}")
+    except Exception as e:   # the offline monkeys never stop the night
+        print(f"offline monkeys not run: {type(e).__name__}")
     try:
         from .lab import run as run_lab
         lab = run_lab(archive)

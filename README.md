@@ -27,7 +27,11 @@ It runs on its own on GitHub, Tuesday to Saturday at 02:00 UTC, after the New Yo
 5. **Signals**: trend (1, 3, 6 and 12 months), mean reversion (week, month) and risk (volatility, distance to the 1-year high).
 6. **Decide**: each agent scores the companies with its DNA weights and decides what to buy and sell tomorrow.
 7. **Journal**: one package per night with input fingerprints, signals, decisions, justifications and portfolios.
-8. **Site**: built from the journal.
+8. **Offline monkeys**: 1,000 random portfolios that copy each agent's turnover give the luck band and the best of N.
+9. **Signal Lab**: every registered signal is scored in shadow mode (daily IC, admission gates); it never touches money.
+10. **Site**: built from the journal.
+
+Contracts for extensions (source registry, shadow signals, journal): [docs/contracts.md](docs/contracts.md).
 
 ## Rules and principles
 
@@ -69,6 +73,8 @@ Current use is personal and non-commercial. List them with `python -m arena sour
 | `arena/night.py` | the whole night; replaying a night |
 | `arena/metrics.py` | indicators and ranking score |
 | `arena/audit.py` | independent audit of a participant's accounts (CSV for Excel) |
+| `arena/monkeys.py` | 1,000 offline monkeys with the agents' turnover |
+| `arena/lab.py`, `rules/signals/` | Signal Lab and signal pre-registrations |
 | `arena/site.py`, `site/` | the website |
 | `tests/` | tests on made-up data |
 | `.github/workflows/` | nightly run and tests |

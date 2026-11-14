@@ -246,3 +246,21 @@ def test_dna_update_takes_effect_on_its_date(tmp_path, monkeypatch):
     causes = {f["reason"].get("cause") for d in days[281:] for p in archive.read_journal(d)["decisions"].values()
               for f in p["fills"]}
     assert "swap" not in causes   # after v1.1 exits come from the rank band, not the score threshold
+
+
+def test_offline_monkeys_mirror_turnover_and_replay(tmp_path):
+    from arena import monkeys
+    archive, days = make_archive(tmp_path / "a")
+    process(archive)
+    df = monkeys.simulate(archive, n=40)
+    assert list(df.index) == archive.journal_days() and df.shape[1] == 40
+    assert (df.iloc[0] == config.CAPITAL).all()
+    s1 = monkeys.run(archive, n=40)
+    s2 = monkeys.run(archive, n=40)
+    assert s2["replay_identical"] and s1["monkeys"] == 40
+    assert 0.0 <= s2["agents"]["Arrow-01"]["percentile_vs_all_monkeys"] <= 1.0
+    # the same number of names as the mirrored agent on day zero
+    j0 = archive.read_journal(days[270])
+    n_agent = sum(1 for o in j0["state"]["participants"]["Arrow-01"]["pending"] if o["side"] == "buy")
+    j1 = archive.read_journal(days[271])
+    assert n_agent == len(j1["state"]["participants"]["Arrow-01"]["positions"])
