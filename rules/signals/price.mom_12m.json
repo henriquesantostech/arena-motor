@@ -1,0 +1,13 @@
+{
+ "signal_id": "price.mom_12m",
+ "family": "momentum",
+ "hypothesis": "Cross-sectional 12-1 momentum: stocks with the strongest 12-month return, skipping the last month, outperform over the next month (core family).",
+ "expected_sign": 1,
+ "horizon_days": 21,
+ "data": [
+  "yahoo"
+ ],
+ "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+ "registered_on": "2026-11-13",
+ "owner": "engine"
+}

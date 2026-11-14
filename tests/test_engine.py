@@ -186,3 +186,45 @@ def test_source_registry():
         mod = sources._primary(role)
         assert reg[mod.SOURCE_ID]["terms"] and reg[mod.SOURCE_ID]["license"] and reg[mod.SOURCE_ID]["use"]
     assert all(s.get("redistribution") for s in reg.values())
+
+
+def test_registry_contract():
+    assert sources.validate_registry() == []
+    bad = [{"id": "x", "provider": "p"}]
+    assert any("missing adapter" in p for p in sources.validate_registry(bad))
+
+
+def test_signal_lab_point_in_time(tmp_path, monkeypatch):
+    """External shadow signals: only rows published and recorded before the night's cutoff count."""
+    import json as _json
+    from arena import lab
+    archive, days = make_archive(tmp_path / "a")
+    process(archive)
+    regdir = tmp_path / "regs"
+    regdir.mkdir()
+    for p in lab.REGISTRATION_DIR.glob("*.json"):
+        (regdir / p.name).write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
+    (regdir / "test.oracle.json").write_text(_json.dumps({
+        "signal_id": "test.oracle", "family": "test", "hypothesis": "h", "expected_sign": 1, "horizon_days": 1,
+        "data": ["none"], "admission_test": "gates_v1", "registered_on": "2025-01-01", "owner": "tests"}), encoding="utf-8")
+    monkeypatch.setattr(lab, "REGISTRATION_DIR", regdir)
+    opens = lab.adjusted_opens(archive)
+    rows = []
+    for i, d in enumerate(days[270:-3]):
+        k = days.index(d)
+        fwd = opens.iloc[k + 2] / opens.iloc[k + 1] - 1
+        cutoff = archive.read_journal(d)["inputs"]["cutoff"]
+        for t, r in fwd.dropna().items():
+            # a perfect "oracle", but recorded after the cutoff: must be ignored
+            rows.append({"date": d, "ticker": t, "signal_id": "test.oracle", "value": r,
+                         "published_at": cutoff, "recorded_at": "2099-01-01T00:00:00Z"})
+    f = archive.root / "intel" / "signals" / "shadow" / "2025" / "x.csv"
+    f.parent.mkdir(parents=True)
+    pd.DataFrame(rows).to_csv(f, index=False)
+    rep = lab.run(archive)
+    assert rep["signals"]["test.oracle"].get("observations", 0) == 0
+    # the same rows recorded in time: the lab sees them and the IC is perfect
+    pd.DataFrame(rows).assign(recorded_at=lambda x: x["published_at"]).to_csv(f, index=False)
+    rep = lab.run(archive)
+    assert rep["signals"]["test.oracle"]["mean_ic"] > 0.99
+    assert rep["signals"]["price.mom_12m"]["observations"] > 0

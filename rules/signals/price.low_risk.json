@@ -1,0 +1,13 @@
+{
+ "signal_id": "price.low_risk",
+ "family": "low_volatility",
+ "hypothesis": "Stocks with the lowest 3-month volatility earn higher risk-adjusted returns (core family).",
+ "expected_sign": 1,
+ "horizon_days": 21,
+ "data": [
+  "yahoo"
+ ],
+ "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+ "registered_on": "2026-11-13",
+ "owner": "engine"
+}

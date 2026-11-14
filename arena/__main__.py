@@ -8,6 +8,7 @@
   site      builds the site from the journal
   audit     one participant's accounts, step by step, to check by hand
   sources   lists the registered data sources and their terms
+  lab       Signal Lab: daily IC and admission gates for every signal (shadow only)
 """
 import argparse
 import random
@@ -23,7 +24,7 @@ from .archive import Archive
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="arena", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["create", "fetch", "process", "night", "replay", "site", "audit", "sources"])
+    ap.add_argument("command", choices=["create", "fetch", "process", "night", "replay", "site", "audit", "sources", "lab"])
     ap.add_argument("--archive", help="private archive folder")
     ap.add_argument("--day-zero", help="create: last trading day before the first trading day")
     ap.add_argument("--mode", default="trial", choices=["trial", "official"])
@@ -35,9 +36,13 @@ def main(argv=None):
     ap.add_argument("--detail", action="store_true", help="show the full error (local use only)")
     a = ap.parse_args(argv)
     if a.command == "sources":
-        for s in config.SOURCES["sources"]:
-            print(f"{s['id']:<11} {', '.join(s['role'])}  |  use: {s['use']}  |  {s['license']}")
-        return 0
+        from . import sources
+        for s in sources.registry():
+            role = ", ".join(s.get("role") or ["(extension)"])
+            print(f"{s['id']:<14} {role}  |  use: {s['use']}  |  {s['license']}")
+        problems = sources.validate_registry()
+        print("registry: OK" if not problems else "registry problems:\n  " + "\n  ".join(problems))
+        return 0 if not problems else 1
     if not a.archive:
         ap.error("--archive is required")
     archive = Archive(a.archive)
@@ -63,6 +68,12 @@ def main(argv=None):
             from .site import build
             build(archive)
             print("site built")
+            return 0
+        if a.command == "lab":
+            from .lab import run as run_lab
+            rep = run_lab(archive)
+            for sid, r in rep["signals"].items():
+                print(f"{sid:<22} {r['status']:<13} obs={r.get('observations')} mean_ic={r.get('mean_ic')} nw_t={r.get('nw_t')}")
             return 0
         if a.command == "audit":
             from .audit import audit
@@ -100,6 +111,12 @@ def night(archive, now):
     r = fetch(archive)
     days = process(archive)
     site_ok = True
+    try:
+        from .lab import run as run_lab
+        lab = run_lab(archive)
+        print(f"lab: {len(lab['signals'])} signals evaluated")
+    except Exception as e:   # the shadow lab never stops the night
+        print(f"lab not run: {type(e).__name__}")
     try:
         from .site import build
         build(archive)
