@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#05070d">
+<title>Arena of Agents</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css?v=80eddf9554">
+<link rel="preload" as="script" href="arena3d.js?v=a468daa00c">
+<script>performance.mark("arena:html")</script>
+<script defer src="data.js"></script>
+<script defer src="app.js?v=17fd20d462"></script>
+</head>
+<body>
+<div id="stage" aria-hidden="true"></div>
+<main id="ui">
+  <header class="top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><b>Arena</b><span class="sub" id="status">Loading…</span></div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="View">
+        <button id="v3d" type="button" aria-pressed="true">3D</button><button id="v2d" type="button" aria-pressed="false">2D</button>
+      </div>
+      <button id="help" class="icon" type="button" aria-label="How to read" title="How to read">?</button>
+    </div>
+  </header>
+  <section class="kpis" id="kpis" aria-label="At a glance"></section>
+  <aside class="board glass" id="board" aria-label="Ranking"></aside>
+  <section class="podium" id="podium" aria-label="Podium"></section>
+  <div class="legend" id="legend"></div>
+  <button class="rankbtn" id="rankbtn" type="button">Ranking</button>
+  <footer class="fine">Simulated money · Not investment advice</footer>
+</main>
+<div id="tip" class="tip" hidden></div>
+<div id="card" class="veil" hidden></div>
+<div id="howto" class="veil" hidden></div>
+<noscript><p class="nojs">This page needs JavaScript.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "arena-site",
+  "private": true,
+  "description": "Arena of Agents: one-look 3D site (static). Build: npm run build",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.187.0"
+  }
+}

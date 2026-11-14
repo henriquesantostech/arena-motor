@@ -1,0 +1,44 @@
+# Publishes the private site (built by the nightly run into the private archive) to Cloudflare Pages,
+# behind Cloudflare Access. Runs after every nightly run, or by hand.
+# Logs are public: site/publish.mjs prints only "ok"/"STOP", never addresses, e-mails or data.
+name: site
+
+on:
+  workflow_run:
+    workflows: [nightly]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Engine (this repository)
+        uses: actions/checkout@v4
+
+      - name: Private archive
+        uses: actions/checkout@v4
+        with:
+          repository: henriquesantostech/arena-arquivo
+          path: archive
+          ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Publish behind the login
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ARENA_ALLOWED_EMAILS: ${{ secrets.ARENA_ALLOWED_EMAILS }}
+        run: node site/publish.mjs archive/site
