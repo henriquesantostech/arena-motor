@@ -23,7 +23,6 @@ const here = new URL(".", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
 
 const fail = msg => { console.error("STOP: " + msg); process.exit(1); };
 if (!E.CLOUDFLARE_API_TOKEN) { console.log("not configured yet (no Cloudflare key): nothing published"); process.exit(0); }
-if (!dir || !existsSync(join(dir, "index.html")) || !existsSync(join(dir, "data.js"))) fail("site folder not found");
 
 async function cf(method, path, body) {
   const r = await fetch(API + path, {
@@ -55,6 +54,8 @@ if (!E.GH_OAUTH_CLIENT_ID || !E.GH_OAUTH_CLIENT_SECRET || !users.length || sessi
   console.log("sign-in not configured yet: project ready, nothing uploaded");
   process.exit(0);
 }
+
+if (!dir || !existsSync(join(dir, "index.html")) || !existsSync(join(dir, "data.js"))) fail("site folder not found (the nightly run builds it)");
 
 // 2. Gate settings, as encrypted project secrets (production and previews)
 const vars = {
