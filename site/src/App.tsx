@@ -10,7 +10,7 @@ const World = lazy(() => import("./scene/World"));
 function report() {
   try {
     const m = (n: string) => Math.round((performance.getEntriesByName(n)[0] as PerformanceMark | undefined)?.startTime ?? -1);
-    const r = { html: m("arena:html"), ui: m("arena:ui"), world: m("arena:3d"), flat: m("arena:2d") };
+    const r = { ui: m("arena:ui"), world: m("arena:3d"), flat: m("arena:2d") };
     (window as unknown as { ARENA_PERF: unknown }).ARENA_PERF = r;
     if (/[?&]perf\b/.test(location.search)) console.table(r);
   } catch { /* ignore */ }
