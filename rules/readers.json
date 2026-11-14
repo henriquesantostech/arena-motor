@@ -1,0 +1,62 @@
+{
+ "version": "0.2",
+ "date": "2026-11-14",
+ "note": "Pinned AI readers (design v2, section 9). Every model is identified by its file SHA-256; every reading stores reader, version and model hash. A model is swapped only after it passes the admission exam (rules/exam/) and fits the time budget. Training cutoffs are recorded: readings of documents dated before a model's cutoff never count as evidence (rigour charter rule 8).",
+ "runtime": {
+  "llama_cpp": {
+   "release": "b12024",
+   "asset": "llama-b12024-bin-ubuntu-x64.tar.gz",
+   "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12024/llama-b12024-bin-ubuntu-x64.tar.gz",
+   "sha256": "96d305fe3b8fe3aabf08d711d6121229f03c07639502ef4283809de78a0a03f2",
+   "flags": {"threads": 4, "batch": 512, "ctx": 8192, "seed": 42, "temperature": 0, "top_k": 1}
+  }
+ },
+ "readers": {
+  "finbert": {
+   "role": "sentiment of every item (title and lead)",
+   "model": "ProsusAI/finbert",
+   "revision": "main",
+   "license": "CC BY-NC-SA 4.0 (non-commercial: replace before any commercial step, e.g. with an Apache-licensed financial sentiment encoder)",
+   "training_cutoff": "2019-12-31",
+   "version": "1"
+  },
+  "gliner": {
+   "role": "entity spans of every item, linked by the deterministic dictionary",
+   "model": "fastino/gliner2-base-v1",
+   "revision": "main",
+   "license": "Apache 2.0",
+   "training_cutoff": "2025-06-30",
+   "labels": ["company", "person", "country", "government agency", "product", "technology", "central bank"],
+   "version": "1"
+  },
+  "embed": {
+   "role": "256-dimension embeddings for retrieval (exact cosine in DuckDB)",
+   "model": "ggml-org/embeddinggemma-300M-GGUF",
+   "file": "embeddinggemma-300M-Q8_0.gguf",
+   "sha256": "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63",
+   "license": "Gemma Terms of Use (commercial use allowed under the Gemma prohibited-use policy)",
+   "training_cutoff": "2025-08-31",
+   "dims": 256,
+   "version": "1"
+  },
+  "llm": {
+   "role": "structured reading of the triaged items (event type, companies affected, direction, magnitude, horizon)",
+   "model": "unsloth/Qwen3.5-4B-GGUF",
+   "file": "Qwen3.5-4B-Q4_K_M.gguf",
+   "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+   "license": "Apache 2.0",
+   "training_cutoff": "2026-03-02 (release date used as a conservative bound; the cutoff is not published)",
+   "max_items": 150,
+   "version": "1"
+  },
+  "brief": {
+   "role": "Daily World Brief and sector headwind/tailwind scores, from knowledge-base facts and retrieved documents dated <= T",
+   "model": "unsloth/Qwen3.5-9B-GGUF",
+   "file": "Qwen3.5-9B-Q4_K_M.gguf",
+   "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",
+   "license": "Apache 2.0",
+   "training_cutoff": "2026-03-02 (release date used as a conservative bound; the cutoff is not published)",
+   "version": "1"
+  }
+ }
+}

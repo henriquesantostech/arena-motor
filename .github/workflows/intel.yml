@@ -1,0 +1,223 @@
+# Nightly intelligence run (design v2, sections 2, 9 and 10). Shadow mode only: nothing here changes an agent's decision.
+# Every day at 05:30 UTC, after the decision cutoff of the US trading day (23:59 New York) and after the arena night.
+# Public logs print only counts and "ok/error"; raw data, readings and results go to the private archive.
+name: intel
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+    inputs:
+      readers:
+        description: "Run the AI readers and the World Brief"
+        type: boolean
+        default: true
+      save:
+        description: "Save results to the private archive (off = test run)"
+        type: boolean
+        default: true
+      exam:
+        description: "Run the model admission exam"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intel
+  cancel-in-progress: false
+
+env:
+  SHARDS: "4"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Private archive
+        uses: actions/checkout@v4
+        with:
+          repository: henriquesantostech/arena-arquivo
+          path: arquivo
+          ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Libraries
+        run: pip install -q -r requirements.txt -r requirements-intel.txt
+      - name: Sources -> raw archive -> knowledge base
+        env:
+          ARENA_CONTACT: ${{ secrets.ARENA_CONTACT }}
+          FRED_KEY: ${{ secrets.FRED_KEY }}
+          BLS_KEY: ${{ secrets.BLS_KEY }}
+          BEA_KEY: ${{ secrets.BEA_KEY }}
+        run: python -m arena.intel ingest --archive arquivo
+      - name: Triage for the readers
+        env:
+          ARENA_CONTACT: ${{ secrets.ARENA_CONTACT }}
+        run: python -m arena.intel triage --archive arquivo --shards $SHARDS --work work
+      - name: Work list for the readers (private artifact, deleted after 1 day)
+        uses: actions/upload-artifact@v4
+        with:
+          name: work
+          path: work/items.jsonl
+          retention-days: 1
+      - name: Save to the archive
+        if: github.event_name == 'schedule' || inputs.save
+        working-directory: arquivo
+        run: bash ../.github/scripts/push_archive.sh "intel ingest"
+
+  read:
+    needs: ingest
+    if: github.event_name == 'schedule' || inputs.readers
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {reader: finbert, shard: 0, shards: 1}
+          - {reader: gliner, shard: 0, shards: 1}
+          - {reader: embed, shard: 0, shards: 1}
+          - {reader: llm, shard: 0, shards: 4}
+          - {reader: llm, shard: 1, shards: 4}
+          - {reader: llm, shard: 2, shards: 4}
+          - {reader: llm, shard: 3, shards: 4}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: work
+          path: work
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Libraries (encoders)
+        if: matrix.reader == 'finbert' || matrix.reader == 'gliner'
+        run: pip install -q -r requirements-readers.txt
+      - name: Libraries (llama.cpp client)
+        if: matrix.reader == 'embed' || matrix.reader == 'llm'
+        run: pip install -q pandas==3.1.1 pyarrow==26.0.1 requests==2.34.2
+      - name: Hugging Face cache (encoders)
+        if: matrix.reader == 'finbert' || matrix.reader == 'gliner'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ matrix.reader }}-${{ hashFiles('rules/readers.json') }}
+      - name: Model cache (GGUF + llama.cpp)
+        if: matrix.reader == 'embed' || matrix.reader == 'llm'
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: gguf-${{ matrix.reader }}-${{ hashFiles('rules/readers.json') }}
+      - name: Pinned models (SHA-256 verified)
+        if: matrix.reader == 'embed' || matrix.reader == 'llm'
+        run: python -m arena.intel.readers.fetch_models --models models --only llama,${{ matrix.reader }}
+      - name: Read (shard ${{ matrix.shard }} of ${{ matrix.shards }})
+        run: python -m arena.intel read --reader ${{ matrix.reader }} --shard ${{ matrix.shard }} --shards ${{ matrix.shards }} --work work --models models
+      - uses: actions/upload-artifact@v4
+        with:
+          name: out-${{ matrix.reader }}-${{ matrix.shard }}
+          path: work/out/
+          retention-days: 1
+
+  exam:
+    if: inputs.exam
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        reader: [finbert, gliner, embed, llm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Libraries
+        run: |
+          if [ "${{ matrix.reader }}" = finbert ] || [ "${{ matrix.reader }}" = gliner ]; then
+            pip install -q -r requirements-readers.txt
+          else
+            pip install -q pandas==3.1.1 pyarrow==26.0.1 requests==2.34.2 numpy
+          fi
+      - name: Pinned models (SHA-256 verified)
+        if: matrix.reader == 'embed' || matrix.reader == 'llm'
+        run: python -m arena.intel.readers.fetch_models --models models --only llama,${{ matrix.reader }}
+      - name: Exam
+        run: python -m arena.intel exam --reader ${{ matrix.reader }} --models models --work exam
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exam-${{ matrix.reader }}
+          path: exam/*.json
+          retention-days: 7
+
+  merge:
+    needs: [ingest, read, exam]
+    if: always() && needs.ingest.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Private archive
+        uses: actions/checkout@v4
+        with:
+          repository: henriquesantostech/arena-arquivo
+          path: arquivo
+          ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Libraries
+        run: pip install -q -r requirements.txt -r requirements-intel.txt
+      - name: Reader outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: out-*
+          path: work/out
+          merge-multiple: true
+        continue-on-error: true
+      - name: Model cache (9B)
+        if: needs.read.result != 'skipped'
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: gguf-brief-${{ hashFiles('rules/readers.json') }}
+      - name: Pinned 9B model (SHA-256 verified)
+        if: needs.read.result != 'skipped'
+        run: python -m arena.intel.readers.fetch_models --models models --only llama,brief
+      - name: Pull the latest archive (ingest saved to it)
+        if: github.event_name == 'schedule' || inputs.save
+        working-directory: arquivo
+        run: git pull -q --rebase
+      - name: Readings -> knowledge base
+        run: python -m arena.intel merge --archive arquivo --work work
+      - name: Daily World Brief
+        if: needs.read.result != 'skipped'
+        continue-on-error: true
+        run: python -m arena.intel brief --archive arquivo --models models
+      - name: Politicians and insiders (alerts, Mirror shadow book)
+        run: python -m arena.intel people --archive arquivo
+      - name: Shadow signals
+        run: python -m arena.intel signals --archive arquivo
+      - name: Signal Lab (provisional IC)
+        run: python -m arena.intel lab --archive arquivo
+      - name: Exam results
+        if: inputs.exam
+        uses: actions/download-artifact@v4
+        with:
+          pattern: exam-*
+          path: arquivo/intel/exam
+          merge-multiple: true
+        continue-on-error: true
+      - name: Save to the archive
+        if: github.event_name == 'schedule' || inputs.save
+        working-directory: arquivo
+        run: bash ../.github/scripts/push_archive.sh "intel merge"

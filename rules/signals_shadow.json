@@ -1,0 +1,187 @@
+{
+ "version": "0.2",
+ "date": "2026-11-14",
+ "note": "Pre-registration of the phase 2 shadow signals (design v2, rigour charter rule 3 and section 8.3). Written before any test on our data. Shadow signals never influence a decision; the Signal Lab may admit one only if every gate passes. Higher value = expected to do better, unless expected_sign is -1. Horizon in trading days, forward return measured from the next open. Signal ids follow the engine contract (docs/contracts.md §2): intel.<name>. A signal dated D uses only information published by the end of the previous trading day (New York), so the value exists before the engine's decision for D.",
+ "gates": {
+  "min_observations": 250,
+  "min_newey_west_t": 3.0,
+  "same_sign_subperiods": "2 of 3",
+  "controls": [
+   "mom_12m",
+   "low_risk",
+   "sector"
+  ],
+  "net_of_costs": "expected gross alpha > turnover x 0.4% round trip",
+  "published_effect_haircut": 0.5
+ },
+ "signals": [
+  {
+   "id": "intel.insider_cluster_buy_90d",
+   "family": "insiders",
+   "hypothesis": "Open-market purchases by several distinct insiders (Form 4, code P) in the last 90 days precede better returns; sales are mostly diversification and carry little information.",
+   "expected_sign": 1,
+   "horizon_days": 21,
+   "data": [
+    "sec_edgar"
+   ],
+   "definition": "distinct insiders with code P in the last 90 calendar days minus 0.1 x distinct insiders with code S not under a 10b5-1 plan",
+   "registered_on": "2026-11-14",
+   "evidence_note": "Strong in small caps, weak in mega-caps; purchases are rare in the S&P 100.",
+   "data_note": "SEC Form 4 via sec_edgar (insider_buy / insider_sell facts), PIT = dissemination time",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.filing_negative_8k_10d",
+   "family": "corporate events",
+   "hypothesis": "8-K items that signal trouble (2.05 restructuring, 2.06 impairment, 4.02 non-reliance, 3.01 delisting notice, 1.05 cyber incident, 4.01 auditor change) in the last 10 days precede weaker returns.",
+   "expected_sign": -1,
+   "horizon_days": 21,
+   "data": [
+    "sec_edgar"
+   ],
+   "definition": "count of those items disseminated in the last 10 calendar days",
+   "registered_on": "2026-11-14",
+   "data_note": "SEC 8-K items via sec_edgar (8k_item facts)",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.attention_spike_3d",
+   "family": "attention",
+   "hypothesis": "A burst of Wikipedia attention is followed by a short-lived push and then a reversal; at a 5-day horizon from the next open the reversal dominates.",
+   "expected_sign": -1,
+   "horizon_days": 5,
+   "data": [
+    "wikipedia"
+   ],
+   "definition": "log(mean views of the last 3 published days / median of the previous 60 days)",
+   "registered_on": "2026-11-14",
+   "data_note": "English Wikipedia daily pageviews (wikipedia), usable from D+1 12:00 UTC",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.revenue_growth_yoy",
+   "family": "fundamentals",
+   "hypothesis": "Higher year-on-year growth of the latest reported quarterly revenue precedes better returns (fundamental momentum).",
+   "expected_sign": 1,
+   "horizon_days": 63,
+   "data": [
+    "sec_xbrl"
+   ],
+   "definition": "latest reported revenue period (quarter or year-to-date) / the same period one year earlier - 1",
+   "registered_on": "2026-11-14",
+   "data_note": "SEC XBRL companyconcept (sec_xbrl), latest vintage known at the decision time",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.earnings_yield_ttm",
+   "family": "value",
+   "hypothesis": "Cheaper companies (higher trailing earnings yield) do better over months (value).",
+   "expected_sign": 1,
+   "horizon_days": 63,
+   "data": [
+    "sec_xbrl",
+    "yahoo"
+   ],
+   "definition": "trailing 12-month net income / (shares outstanding x last close)",
+   "registered_on": "2026-11-14",
+   "data_note": "SEC XBRL net income (4 latest quarters known at T) and shares outstanding; close price from the phase 1 archive",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.cash_profitability",
+   "family": "quality",
+   "hypothesis": "More cash-profitable companies (operating cash flow over assets) do better over months (quality).",
+   "expected_sign": 1,
+   "horizon_days": 63,
+   "data": [
+    "sec_xbrl"
+   ],
+   "definition": "trailing 12-month operating cash flow / latest total assets",
+   "registered_on": "2026-11-14",
+   "data_note": "SEC XBRL operating cash flow (12 months) and total assets, latest vintages known at T",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.news_sentiment_3d",
+   "family": "news sentiment",
+   "hypothesis": "Companies with more positive news tone (FinBERT on titles and press releases) in the last 3 days do better the next day; the effect is expected to be small and to decay as adoption grows.",
+   "expected_sign": 1,
+   "horizon_days": 1,
+   "data": [
+    "gdelt",
+    "sec_edgar",
+    "social",
+    "health",
+    "federal_register"
+   ],
+   "definition": "mean of FinBERT (positive - negative) over linked documents published in the last 3 calendar days",
+   "registered_on": "2026-11-14",
+   "evidence_note": "Next-day effect in the literature, strongest in small caps; doubtful net of costs with next-open execution.",
+   "data_note": "FinBERT readings of documents linked to the company (GDELT news, 8-K press releases, HN, FDA, Federal Register); usable once both the document and its reading are known",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.llm_impact_5d",
+   "family": "news reading",
+   "hypothesis": "The structured LLM reading (direction x magnitude of the expected effect on the company) summed over the last 5 days predicts the next 5 days.",
+   "expected_sign": 1,
+   "horizon_days": 5,
+   "data": [
+    "gdelt",
+    "sec_edgar",
+    "federal_register",
+    "central_bank_rss",
+    "wikipedia"
+   ],
+   "definition": "sum of direction x magnitude for the ticker over readings of documents published in the last 5 calendar days",
+   "registered_on": "2026-11-14",
+   "data_note": "Qwen3.5-4B readings of triaged documents (pinned model, stored outputs)",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.mirror_congress_60d",
+   "family": "politicians",
+   "hypothesis": "Stocks that more members of Congress disclosed buying (minus selling) in the last 60 days do better over the next month, despite the disclosure delay.",
+   "expected_sign": 1,
+   "horizon_days": 21,
+   "data": [
+    "house_ptr"
+   ],
+   "definition": "distinct members buying minus distinct members selling, disclosed in the last 60 calendar days",
+   "registered_on": "2026-11-14",
+   "evidence_note": "No edge for the average member after the STOCK Act; leaders possibly (small samples).",
+   "data_note": "House periodic transaction reports (house_ptr), PIT = next business day after filing",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  },
+  {
+   "id": "intel.brief_sector_tailwind",
+   "family": "world brief",
+   "hypothesis": "The Daily World Brief's sector headwind/tailwind score (-2..+2), judged only from evidence dated <= T, predicts sector-relative returns over the next month.",
+   "expected_sign": 1,
+   "horizon_days": 21,
+   "data": [
+    "gdelt",
+    "sec_edgar",
+    "federal_register",
+    "central_bank_rss",
+    "wikipedia",
+    "us_treasury",
+    "ecb_rates"
+   ],
+   "definition": "the brief's score for the company's sector",
+   "registered_on": "2026-11-14",
+   "data_note": "Daily World Brief (Qwen3.5-9B), stored once per day",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel"
+  }
+ ]
+}

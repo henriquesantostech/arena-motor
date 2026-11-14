@@ -1,0 +1,7 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1+cpu
+transformers==5.22.1
+gliner2[local]==2.1.0
+pandas==3.1.1
+pyarrow==26.0.1
+requests==2.34.2

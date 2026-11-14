@@ -1,0 +1,23 @@
+{
+ "version": "1",
+ "frozen_on": "2026-11-14",
+ "note": "Frozen labelled exam for the AI readers (design v2, section 9). Items are original, synthetic texts written for this exam; labels were set before any model was run on them. Never edit this version: a new exam is a new file (exam_v2) and is logged in rules/changes.md. A model is swapped in only if it beats the current one on these scores and fits the time budget.",
+ "admission": {
+  "llm": {
+   "json_valid_min": 0.98,
+   "event_type_accuracy_min": 0.7,
+   "direction_accuracy_min": 0.75,
+   "ticker_f1_min": 0.85,
+   "max_seconds_per_item": 25
+  },
+  "finbert": {
+   "direction_accuracy_min": 0.6
+  },
+  "embed": {
+   "same_topic_retrieval_min": 0.7
+  },
+  "gliner": {
+   "ticker_recall_min": 0.8
+  }
+ }
+}
