@@ -138,17 +138,33 @@ export function mount(host, model, opts) {
     const dot = new Mesh(new CircleGeometry(0.09, 20), new MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: DoubleSide }));
     dot.rotation.x = -Math.PI / 2; dot.position.y = 0.01; g.add(dot);
     if (it.type === "agent") {
-      const glow = new Sprite(new SpriteMaterial({ map: glowTex, color: col, transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false }));
-      glow.scale.setScalar(1.9 * s); holder.add(glow);
+      // glow = recent action: brighter halo (and a slow pulse) if it traded at the last open
+      const glow = new Sprite(new SpriteMaterial({ map: glowTex, color: col, transparent: true, opacity: it.active ? 0.9 : 0.28, blending: AdditiveBlending, depthWrite: false }));
+      glow.scale.setScalar((it.active ? 2.4 : 1.6) * s); holder.add(glow);
+      if (it.active) body.material.emissiveIntensity = 0.6;
+      g.userData.glow = glow;
     }
     if (it.rank && it.rank <= 3) { // podium medal floating above the crystal
       const medal = new Sprite(new SpriteMaterial({ map: medalTexture(it.rank), transparent: true, depthWrite: false }));
       medal.scale.setScalar(0.42); medal.position.y = 1.05 * s; holder.add(medal);
     }
-    g.userData = { id: it.id, holder, body, y, phase: Math.random() * Math.PI * 2, base: s };
+    Object.assign(g.userData, { id: it.id, holder, body, y, phase: Math.random() * Math.PI * 2, base: s, active: !!it.active });
     holder.position.y = reduce ? y : 0; // intro: rise from the water
     scene.add(g); pickables.push(body); objs.set(it.id, g);
   });
+
+  // Luck band: where the random monkeys ended up (translucent shell around the agents' ring).
+  // Above the band = better than every monkey; inside it = indistinguishable from luck.
+  if (model.luck) {
+    const lo = yOf(model.luck[0]), hgt = Math.max(yOf(model.luck[1]) - lo, 0.04);
+    const band = new Mesh(new CylinderGeometry(R_AGENTS + 0.9, R_AGENTS + 0.9, hgt, 96, 1, true),
+      new MeshBasicMaterial({ color: 0xa9b1c2, transparent: true, opacity: 0.07, side: DoubleSide, depthWrite: false }));
+    band.position.y = lo + hgt / 2; scene.add(band);
+    [lo, lo + hgt].forEach(yy => {
+      const edge = new Mesh(new RingGeometry(R_AGENTS + 0.88, R_AGENTS + 0.92, 128), new MeshBasicMaterial({ color: 0xc8cfdc, transparent: true, opacity: 0.35, side: DoubleSide, depthWrite: false }));
+      edge.rotation.x = -Math.PI / 2; edge.position.y = yy; scene.add(edge);
+    });
+  }
 
   // Species labels on the floor rim (2-4 words total, no clutter)
   sectors.forEach((sp, si) => {
@@ -216,6 +232,7 @@ export function mount(host, model, opts) {
       const u = g.userData;
       u.holder.position.y = u.y * e + (reduce ? 0 : Math.sin(t * 1.1 + u.phase) * 0.05);
       if (!reduce) u.body.rotation.y += dt * 0.35;
+      if (u.active && u.glow && !reduce) u.glow.material.opacity = 0.65 + 0.3 * Math.sin(t * 2.4 + u.phase);
     });
     ripples.children.forEach((m, i) => { m.scale.setScalar(1 + ((t * 0.08 + i * 0.25) % 1) * 0.15); });
     controls.update();

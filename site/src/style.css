@@ -110,6 +110,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--water);outline-offs
 .dna{grid-column:2;grid-row:3}
 .hold{grid-column:3;grid-row:3/5}
 .log{grid-column:1/3;grid-row:4}
+.tiles{position:absolute;inset:0}
+.tile{position:absolute;border:1px solid rgba(5,7,13,.9);border-radius:6px;padding:5px 6px;overflow:hidden;display:flex;flex-direction:column;gap:1px;font-size:12px;line-height:1.2}
+.tile b{font-weight:700}.tile span{font-size:11px;color:rgba(232,237,247,.8)}.tile i{font-style:normal}
 .hrow{display:grid;grid-template-columns:52px 1fr 46px 52px;gap:8px;align-items:center;font-size:12.5px;padding:2px 0}
 .hrow .t{font-weight:700}
 .hrow .w{height:8px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}

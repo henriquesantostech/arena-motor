@@ -42,7 +42,11 @@
   agents.forEach(p => { p.slot = model.perSpecies[p.sp] = (model.perSpecies[p.sp] ?? -1) + 1; });
   Object.keys(model.perSpecies).forEach(k => model.perSpecies[k]++);
   monkeys.forEach((p, i) => p.slot = i);
-  P.forEach(p => model.items.push({ id: p.id, type: p.type, sp: p.sp, slot: p.slot, value: p.value, gap: gap(p), rank: p.type === "agent" && moved ? p.rank : 0 }));
+  const lastDay = A.meta.updated;
+  P.forEach(p => p.active = p.type !== "index" && p.type !== "equal" && p.log.some(l => l.d === lastDay && (l.k === "buy" || l.k === "sell")));
+  const mg = monkeys.map(p => p.vsIdx).filter(v => v != null);
+  model.luck = mg.length && moved ? [Math.min(...mg), Math.max(...mg)] : null;
+  P.forEach(p => model.items.push({ id: p.id, type: p.type, sp: p.sp, slot: p.slot, value: p.value, gap: gap(p), active: p.active, rank: p.type === "agent" && moved ? p.rank : 0 }));
 
   // ---------- HUD ----------
   const nDay = Math.max(0, (A.meta.dates || []).length - 1);
@@ -56,9 +60,9 @@
     const best = ranked[0];
     const d = A.day;
     $("#kpis").innerHTML = [
-      idx && `<div class="kpi glass click" data-id="${idx.id}"><div class="l"><span class="wave"></span>S&P 500</div><div class="v ${ud(idx.ret)}">${pct(idx.ret)}<small>since ${day(idx.from)}</small></div></div>`,
-      `<div class="kpi glass"><div class="l">Agents above water</div><div class="v">${above}<small>/ ${agents.length}</small></div></div>`,
-      `<div class="kpi glass"><div class="l">Monkeys above water</div><div class="v">${mAbove}<small>/ ${monkeys.length}</small></div></div>`,
+      idx && `<div class="kpi glass click" data-id="${idx.id}" title="The benchmark: S&P 500 with dividends, in euros. It is the water line."><div class="l"><span class="wave"></span>S&P 500</div><div class="v ${ud(idx.ret)}">${pct(idx.ret)}<small>since ${day(idx.from)}</small></div></div>`,
+      `<div class="kpi glass" title="Agents beating the S&P 500 since day zero."><div class="l">Agents above water</div><div class="v">${above}<small>/ ${agents.length}</small></div></div>`,
+      `<div class="kpi glass" title="Monkeys pick at random. If they beat the index too, beating it proves little."><div class="l">Monkeys above water</div><div class="v">${mAbove}<small>/ ${monkeys.length}</small></div></div>`,
       best && moved ? `<div class="kpi glass click" data-id="${best.id}"><div class="l">${shape(best)}Leader</div><div class="v">${esc(best.name)}<small class="${ud(best.vsIdx)}">${pct(best.vsIdx)}</small></div></div>`
         : `<div class="kpi glass"><div class="l">Last night</div><div class="v">${d ? d.buys + d.sells : 0}<small>trades</small></div></div>`,
     ].filter(Boolean).join("");
@@ -205,7 +209,7 @@
     if (location.hash !== "#/" + id) history.replaceState(null, "", "#/" + id);
     card.innerHTML = sheet(p); card.hidden = false;
     view && view.pause && view.pause(true);
-    requestAnimationFrame(() => { drawChart(p); drawRadar(p); });
+    requestAnimationFrame(() => { drawChart(p); drawRadar(p); drawTiles(p); });
     card.querySelector(".close").focus({ preventScroll: true });
   }
   function close() {
@@ -236,10 +240,7 @@
       ["Worst drop", p.mdd ? pct(-p.mdd, 1) : "0%", p.mdd > 0.0001 ? "down" : ""],
       [isAgent ? "Rank · score" : "Days", isAgent ? `#${p.rank}${p.score != null ? ` · ${nf(p.score, 2)}` : ""}` : nf(p.days), ""],
     ];
-    const hold = p.hold.length ? p.hold.slice(0, 12).map(h => {
-      const mx = p.hold[0].w || 1;
-      return `<div class="hrow" title="${esc(h.name)}"><span class="t">${esc(h.t.replace("^SP500TR", "S&P TR"))}</span><span class="w"><i style="width:${(h.w / mx) * 100}%;background:${colorOf(p)}"></i></span><span class="r">${pct(h.w, 0, false)}</span><span class="r ${ud(h.gain)}">${pct(h.gain, 1)}</span></div>`;
-    }).join("") + (p.hold.length > 12 ? `<div class="empty">+${p.hold.length - 12} more</div>` : "") : `<div class="empty">All in cash</div>`;
+    const hold = p.hold.length ? `<div class="tiles" id="tiles"></div>` : `<div class="empty">All in cash</div>`;
     const moves = [
       ...p.next.map(o => ({ d: "next", k: "next", side: o.k, t: o.t, eur: o.eur, why: o.why })),
       ...p.log,
@@ -258,7 +259,7 @@
       <div class="big">${tiles.map(t => `<div><div class="l">${t[0]}</div><div class="v ${t[2]}">${t[1]}</div></div>`).join("")}</div>
       <section class="pane chart"><h3><span>Since day zero</span><span class="k"><span><span class="dot" style="background:${colorOf(p)}"></span>${esc(label(p))}</span>${p.type !== "index" ? `<span><span class="dot" style="background:${COLORS.index}"></span>S&P 500</span>` : ""}<span><span class="dot" style="background:${COLORS.monkey};opacity:.6"></span>Monkeys</span></span></h3><div class="fill" id="chart"></div></section>
       <section class="pane dna">${dnaPane}</section>
-      <section class="pane hold"><h3><span>Holdings · ${p.hold.length}</span><span class="k">cash ${eur(p.cash)}</span></h3><div class="fill" style="overflow:hidden">${hold}</div></section>
+      <section class="pane hold"><h3><span>Holdings · ${p.hold.length}</span><span class="k" title="Tile size = share of the portfolio; colour = gain since bought">size = weight · colour = gain</span></h3><div class="fill" style="overflow:hidden">${hold}</div></section>
       <section class="pane log"><h3><span>Latest moves</span><span class="k">filled at the open, after the night's decision</span></h3><div class="fill" style="overflow:hidden">${moves}</div></section>
       <div class="foot">${extra}</div>
     </article>`;
@@ -288,6 +289,33 @@
     else s += `<text x="${(W + m.l) / 2}" y="${H / 2}" text-anchor="middle" fill="#5b6479" font-size="12">The line starts after the first trading day</text>`;
     [0, n - 1].forEach(i => dates[o + i] && (s += `<text x="${X(i)}" y="${H - 4}" text-anchor="${i ? "end" : "start"}" fill="#5b6479" font-size="10.5">${day(dates[o + i])}</text>`));
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`;
+  }
+
+  // Holdings as tiles: area = weight, colour = gain since bought (green up, red down).
+  function drawTiles(p) {
+    const el = card.querySelector("#tiles"); if (!el) return;
+    const W = el.clientWidth, H = el.clientHeight;
+    const items = p.hold.filter(h => h.w > 0).map(h => ({ h, a: h.w }));
+    const cash = p.cash / (p.value || 1);
+    if (cash > 0.005) items.push({ h: { t: "Cash", name: "Uninvested cash", w: cash, gain: null }, a: cash });
+    const tot = items.reduce((s, i) => s + i.a, 0) || 1;
+    items.forEach(i => i.a = i.a / tot * W * H);
+    const out = [];
+    (function lay(list, x, y, w, h) {
+      if (!list.length) return;
+      if (list.length === 1) { out.push([list[0], x, y, w, h]); return; }
+      const sum = list.reduce((s, i) => s + i.a, 0);
+      let acc = list[0].a, k = 1;
+      while (k < list.length - 1 && acc + list[k].a <= sum / 2) acc += list[k++].a;
+      const f = acc / sum;
+      if (w >= h) { lay(list.slice(0, k), x, y, w * f, h); lay(list.slice(k), x + w * f, y, w * (1 - f), h); }
+      else { lay(list.slice(0, k), x, y, w, h * f); lay(list.slice(k), x, y + h * f, w, h * (1 - f)); }
+    })(items, 0, 0, W, H);
+    const tone = g => g == null ? "rgba(255,255,255,.06)" : g >= 0 ? `rgba(62,224,143,${0.14 + Math.min(g / 0.15, 1) * 0.5})` : `rgba(255,107,107,${0.14 + Math.min(-g / 0.15, 1) * 0.5})`;
+    el.innerHTML = out.map(([i, x, y, w, h]) => {
+      const big = w > 54 && h > 34, tk = esc(i.h.t.replace("^SP500TR", "S&P TR"));
+      return `<div class="tile" title="${esc(i.h.name)} · ${pct(i.h.w, 1, false)}${i.h.gain != null ? " · " + pct(i.h.gain, 1) + " since bought" : ""}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${tone(i.h.gain)}">${w > 30 && h > 16 ? `<b>${tk}</b>` : ""}${big ? `<span>${pct(i.h.w, 0, false)}${i.h.gain != null ? ` · <i class="${ud(i.h.gain)}">${pct(i.h.gain, 1)}</i>` : ""}</span>` : ""}</div>`;
+    }).join("");
   }
 
   function drawRadar(p) {
