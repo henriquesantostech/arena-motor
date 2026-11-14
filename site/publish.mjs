@@ -1,31 +1,33 @@
-// Publishes the private site to Cloudflare Pages, behind Cloudflare Access (login).
-// Safety first: it never uploads unless the login gate covers the address, and after uploading it
-// checks from outside that the page and the data ask for a login. Any doubt -> stop with an error.
+// Publishes the private site to Cloudflare Pages behind a GitHub sign-in (site/functions/_middleware.js).
+// Safety first: the gate ships in the same upload as the files, the gate itself fails closed, and after
+// uploading we check from outside that the page and the data ask for a login. If not, the site is
+// replaced at once by a "closed" page and the run stops with an error.
 //
-// Usage (GitHub Actions, see .github/workflows/site.yml):
-//   CLOUDFLARE_API_TOKEN=...  ARENA_ALLOWED_EMAILS="a@x.com,b@y.com"  node site/publish.mjs <folder>
-// The token needs: Account · Cloudflare Pages · Edit, Account · Access: Apps and Policies · Edit,
-// Account · Account Settings · Read. Logs never print e-mails or tokens (the engine repo is public).
+// Usage (GitHub Actions, see .github/workflows/site.yml):  node site/publish.mjs <site folder>
+// Env: CLOUDFLARE_API_TOKEN (Account · Cloudflare Pages · Edit + Account Settings · Read),
+//      GH_OAUTH_CLIENT_ID, GH_OAUTH_CLIENT_SECRET (GitHub OAuth app), ARENA_ALLOWED_USERS (GitHub accounts),
+//      ARENA_SESSION_KEY (optional).
+// Logs are public (engine repo): never print addresses, accounts, keys or data.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 
 const PROJECT = process.env.ARENA_PAGES_PROJECT || "arena-agents";
-const APP_NAME = "Arena of Agents";
-const POLICY_NAME = "Arena owners";
 const WRANGLER = "wrangler@4.154.0";
 const API = "https://api.cloudflare.com/client/v4";
-const token = process.env.CLOUDFLARE_API_TOKEN;
-const emails = (process.env.ARENA_ALLOWED_EMAILS || "").split(/[,;\s]+/).filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
-const dir = process.argv[2];
+const E = process.env;
+const dir = process.argv[2] && resolve(process.argv[2]);
+const here = new URL(".", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
 
 const fail = msg => { console.error("STOP: " + msg); process.exit(1); };
-if (!token) { console.log("not configured yet (no CLOUDFLARE_API_TOKEN): nothing published"); process.exit(0); }
-if (!emails.length) fail("missing ARENA_ALLOWED_EMAILS (who may log in)");
-if (!dir || !existsSync(dir + "/index.html") || !existsSync(dir + "/data.js")) fail("site folder not found");
+if (!E.CLOUDFLARE_API_TOKEN) { console.log("not configured yet (no Cloudflare key): nothing published"); process.exit(0); }
+if (!dir || !existsSync(join(dir, "index.html")) || !existsSync(join(dir, "data.js"))) fail("site folder not found");
 
 async function cf(method, path, body) {
   const r = await fetch(API + path, {
-    method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    method, headers: { Authorization: `Bearer ${E.CLOUDFLARE_API_TOKEN}`, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
   const j = await r.json().catch(() => ({}));
@@ -38,53 +40,63 @@ const accounts = await cf("GET", "/accounts");
 if (!accounts || accounts.length !== 1) fail(`expected exactly one Cloudflare account, found ${accounts ? accounts.length : 0}`);
 const acc = accounts[0].id;
 
-// 1. Pages project (created empty the first time: nothing is public until the gate exists)
+// 1. Project (empty the first time: nothing is online until the first upload)
 let project = await cf("GET", `/accounts/${acc}/pages/projects/${PROJECT}`);
 if (!project) project = await cf("POST", `/accounts/${acc}/pages/projects`, { name: PROJECT, production_branch: "main" });
-const host = project.subdomain;   // e.g. arena-agents.pages.dev (or with a suffix if the name was taken)
+const host = project.subdomain;
 if (!host || !host.endsWith(".pages.dev")) fail("unexpected project address");
+console.log("project ok");
 
-// 2. Login gate: one Access application covering the address and every deployment preview (*.address)
-const want = [host, "*." + host];
-const policies = await cf("GET", `/accounts/${acc}/access/policies`);
-let policy = (policies || []).find(p => p.name === POLICY_NAME);
-const policyBody = { name: POLICY_NAME, decision: "allow", include: emails.map(email => ({ email: { email } })), session_duration: "720h" };
-policy = policy ? await cf("PUT", `/accounts/${acc}/access/policies/${policy.id}`, policyBody)
-  : await cf("POST", `/accounts/${acc}/access/policies`, policyBody);
-const apps = await cf("GET", `/accounts/${acc}/access/apps`);
-let app = (apps || []).find(a => a.name === APP_NAME);
-const appBody = {
-  name: APP_NAME, type: "self_hosted", domain: host, session_duration: "720h",
-  destinations: want.map(uri => ({ type: "public", uri })),
-  policies: [{ id: policy.id, precedence: 1 }],
-  app_launcher_visible: false, auto_redirect_to_identity: false,
-};
-app = app ? await cf("PUT", `/accounts/${acc}/access/apps/${app.id}`, appBody) : await cf("POST", `/accounts/${acc}/access/apps`, appBody);
-const covered = new Set([app.domain, ...(app.self_hosted_domains || []), ...(app.destinations || []).map(d => d.uri)]);
-if (!want.every(u => covered.has(u))) fail("the login gate does not cover the whole address");
-console.log(`login gate ok (${emails.length} people allowed)`);
-
-async function gated(label) {
-  for (const path of ["/", "/data.js"]) {
-    let ok = false;
-    for (let i = 0; i < 9 && !ok; i++) {
-      const r = await fetch(`https://${host}${path}`, { redirect: "manual" }).catch(() => null);
-      const loc = (r && r.headers.get("location")) || "";
-      ok = !!r && ((r.status === 302 || r.status === 303) && /cloudflareaccess\.com/.test(loc) || r.status === 401 || r.status === 403);
-      if (!ok) await new Promise(res => setTimeout(res, 10000));
-    }
-    if (!ok) fail(`${label}: ${path} answers without a login. Check Cloudflare Access now.`);
-  }
+const users = (E.ARENA_ALLOWED_USERS || "").split(/[,;\s]+/).filter(u => /^[A-Za-z0-9-]{1,39}$/.test(u));
+// Session signing key: its own secret if given, else derived from the OAuth secret (rotating that one signs everyone out).
+const sessionKey = (E.ARENA_SESSION_KEY || "").length >= 32 ? E.ARENA_SESSION_KEY
+  : E.GH_OAUTH_CLIENT_SECRET ? createHash("sha256").update("arena-session|" + E.GH_OAUTH_CLIENT_SECRET).digest("base64url") : "";
+if (!E.GH_OAUTH_CLIENT_ID || !E.GH_OAUTH_CLIENT_SECRET || !users.length || sessionKey.length < 32) {
+  console.log("sign-in not configured yet: project ready, nothing uploaded");
+  process.exit(0);
 }
 
-// 3. Before uploading: from outside, the address must already ask for a login.
-await gated("before upload");
+// 2. Gate settings, as encrypted project secrets (production and previews)
+const vars = {
+  GITHUB_CLIENT_ID: { type: "secret_text", value: E.GH_OAUTH_CLIENT_ID },
+  GITHUB_CLIENT_SECRET: { type: "secret_text", value: E.GH_OAUTH_CLIENT_SECRET },
+  SESSION_KEY: { type: "secret_text", value: sessionKey },
+  ALLOWED_GITHUB_USERS: { type: "secret_text", value: users.join(",") },
+};
+await cf("PATCH", `/accounts/${acc}/pages/projects/${PROJECT}`, { deployment_configs: { production: { env_vars: vars }, preview: { env_vars: vars } } });
+console.log(`sign-in ok (${users.length} account(s) allowed)`);
 
-// 4. Upload
-execFileSync("npx", ["--yes", WRANGLER, "pages", "deploy", dir, "--project-name", PROJECT, "--branch", "main", "--commit-dirty=true"], {
-  stdio: ["ignore", "ignore", "inherit"], env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: acc }, shell: process.platform === "win32",
-});
+// 3. Upload site + gate together
+function upload(folder) {
+  const stage = mkdtempSync(join(tmpdir(), "arena-"));
+  cpSync(folder, join(stage, "public"), { recursive: true });
+  mkdirSync(join(stage, "functions"));
+  cpSync(join(here, "functions", "_middleware.js"), join(stage, "functions", "_middleware.js"));
+  execFileSync("npx", ["--yes", WRANGLER, "pages", "deploy", "public", "--project-name", PROJECT, "--branch", "main", "--commit-dirty=true"], {
+    cwd: stage, stdio: ["ignore", "ignore", "inherit"], env: { ...E, CLOUDFLARE_ACCOUNT_ID: acc }, shell: process.platform === "win32",
+  });
+}
+upload(dir);
 
-// 5. After uploading: same check (the address itself is never printed: these logs are public).
-await gated("after upload");
-console.log("published; login required");
+// 4. Check from outside (the address and the deployment's own address): page and data must ask for a login.
+async function gated(base) {
+  for (const path of ["/", "/data.js", "/app.js"]) {
+    let ok = false;
+    for (let i = 0; i < 6 && !ok; i++) {
+      const r = await fetch(base + path, { redirect: "manual" }).catch(() => null);
+      ok = !!r && r.status === 302 && /^https:\/\/github\.com\/login\/oauth\/authorize/.test(r.headers.get("location") || "");
+      if (!ok) await new Promise(res => setTimeout(res, 10000));
+    }
+    if (!ok) return false;
+  }
+  return true;
+}
+const latest = ((await cf("GET", `/accounts/${acc}/pages/projects/${PROJECT}/deployments?env=production`)) || [])[0];
+if (!(await gated(`https://${host}`)) || (latest && latest.url && !(await gated(latest.url)))) {
+  const closed = mkdtempSync(join(tmpdir(), "arena-closed-"));
+  writeFileSync(join(closed, "index.html"), "<!doctype html><meta name=robots content=noindex><title>Closed</title><p>Closed.</p>");
+  writeFileSync(join(closed, "data.js"), "");
+  upload(closed);
+  fail("the site answered without a login: replaced by a closed page. Check the sign-in.");
+}
+console.log("published; checked from outside: login required");
