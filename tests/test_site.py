@@ -40,3 +40,22 @@ def test_site_before_first_night(tmp_path):
     build(arch)   # no journal yet: the page must still open
     d = _data(tmp_path / "a")
     assert d["p"] == [] and d["meta"]["updated"] is None
+
+
+def test_site_uses_the_offline_monkeys(tmp_path):
+    arch, days = make_archive(tmp_path / "a")
+    process(arch)
+    jd = arch.journal_days()
+    (tmp_path / "a" / "monkeys").mkdir()
+    summary = {"date": jd[-1], "monkeys": 1000, "return_p05": -0.03, "return_median": 0.0, "return_p95": 0.04, "best_of_n": 0.09,
+               "luck_band": {"dates": jd, "p05": [-0.01] * len(jd), "p95": [0.02] * len(jd)},
+               "agents": {"Arrow-01": {"return": 0.01, "percentile_vs_all_monkeys": 0.61, "percentile_vs_mirroring_monkeys": 0.55}}}
+    (tmp_path / "a" / "monkeys" / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+    build(arch)
+    d = _data(tmp_path / "a")
+    assert d["luck"]["n"] == 1000 and d["luck"]["p95"] == 0.04 and len(d["luck"]["s"]) == len(d["meta"]["dates"])
+    a = next(p for p in d["p"] if p["name"] == "Arrow-01")
+    assert a["pctAll"] == 0.61 and a["pctMirror"] == 0.55
+    (tmp_path / "a" / "monkeys" / "summary.json").write_text("{broken", encoding="utf-8")
+    build(arch)   # a broken file never breaks the site
+    assert _data(tmp_path / "a")["luck"] is None

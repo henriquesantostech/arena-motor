@@ -45,7 +45,10 @@
   const lastDay = A.meta.updated;
   P.forEach(p => p.active = p.type !== "index" && p.type !== "equal" && p.log.some(l => l.d === lastDay && (l.k === "buy" || l.k === "sell")));
   const mg = monkeys.map(p => p.vsIdx).filter(v => v != null);
-  model.luck = mg.length && moved ? [Math.min(...mg), Math.max(...mg)] : null;
+  // Luck band: 90% of 1,000 random monkeys (same rules) end up inside it. Falls back to the 10 live monkeys.
+  const L = A.luck, idxRet = idx ? idx.ret || 0 : 0;
+  model.luck = !moved ? null : L && L.p05 != null ? [L.p05 - idxRet, L.p95 - idxRet] : mg.length ? [Math.min(...mg), Math.max(...mg)] : null;
+  const lucky = L && L.p95 != null ? agents.filter(p => (p.ret || 0) > L.p95).length : null;
   P.forEach(p => model.items.push({ id: p.id, type: p.type, sp: p.sp, slot: p.slot, value: p.value, gap: gap(p), active: p.active, rank: p.type === "agent" && moved ? p.rank : 0 }));
 
   // ---------- HUD ----------
@@ -62,7 +65,9 @@
     $("#kpis").innerHTML = [
       idx && `<div class="kpi glass click" data-id="${idx.id}" title="The benchmark: S&P 500 with dividends, in euros. It is the water line."><div class="l"><span class="wave"></span>S&P 500</div><div class="v ${ud(idx.ret)}">${pct(idx.ret)}<small>since ${day(idx.from)}</small></div></div>`,
       `<div class="kpi glass" title="Agents beating the S&P 500 since day zero."><div class="l">Agents above water</div><div class="v">${above}<small>/ ${agents.length}</small></div></div>`,
-      `<div class="kpi glass" title="Monkeys pick at random. If they beat the index too, beating it proves little."><div class="l">Monkeys above water</div><div class="v">${mAbove}<small>/ ${monkeys.length}</small></div></div>`,
+      lucky != null
+        ? `<div class="kpi glass" title="Agents doing better than 95% of ${nf(L.n)} random monkeys with the same rules. Only these show more than luck."><div class="l">Above the luck band</div><div class="v">${lucky}<small>/ ${agents.length}</small></div></div>`
+        : `<div class="kpi glass" title="Monkeys pick at random. If they beat the index too, beating it proves little."><div class="l">Monkeys above water</div><div class="v">${mAbove}<small>/ ${monkeys.length}</small></div></div>`,
       best && moved ? `<div class="kpi glass click" data-id="${best.id}"><div class="l">${shape(best)}Leader</div><div class="v">${esc(best.name)}<small class="${ud(best.vsIdx)}">${pct(best.vsIdx)}</small></div></div>`
         : `<div class="kpi glass"><div class="l">Last night</div><div class="v">${d ? d.buys + d.sells : 0}<small>trades</small></div></div>`,
     ].filter(Boolean).join("");
@@ -101,7 +106,7 @@
   function legend() {
     $("#legend").className = "legend glass";
     $("#legend").innerHTML = SPECIES.map(s => `<span><span class="gem" style="background:${COLORS[s]}"></span>${esc(A.species[s].label)}</span>`).join("") +
-      `<span><span class="dot" style="background:${COLORS.monkey}"></span>Monkeys</span><span><span class="dot" style="border:2px solid #fff;background:none"></span>Equal weight</span><span><span class="wave"></span>S&P 500</span>`;
+      `<span><span class="dot" style="background:${COLORS.monkey}"></span>Monkeys</span><span><span class="dot" style="border:2px solid #fff;background:none"></span>Equal weight</span><span><span class="wave"></span>S&P 500</span><span title="90% of 1,000 random monkeys end up inside it"><span class="dot" style="background:#a9b1c2;opacity:.5;border-radius:2px"></span>Luck band</span>`;
   }
 
   kpis(); board(); podium(); legend();
@@ -177,6 +182,12 @@
       const cw = pw / cols.length;
       let s = `<defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${COLORS.index}" stop-opacity=".22"/><stop offset="1" stop-color="${COLORS.index}" stop-opacity="0"/></linearGradient></defs>`;
       s += `<rect x="${m.l}" y="${y0}" width="${pw}" height="${ph / 2}" fill="url(#wg)"/>`;
+      if (model.luck) {
+        const t = y(model.luck[1]), b = y(model.luck[0]);
+        s += `<rect x="${m.l}" y="${t}" width="${pw}" height="${Math.max(b - t, 1)}" fill="#a9b1c2" opacity=".08"/>`;
+        s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${t}" y2="${t}" stroke="#c8cfdc" stroke-opacity=".35" stroke-dasharray="3 4"/>`;
+        s += `<text x="${m.l + pw - 4}" y="${t - 6}" text-anchor="end" fill="#8d97ad" font-size="11">luck band</text>`;
+      }
       s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${y0}" y2="${y0}" stroke="${COLORS.index}" stroke-width="2"/>`;
       s += `<text x="${m.l + 4}" y="${y0 + 16}" fill="${COLORS.index}" font-size="12" font-weight="600">S&amp;P 500 · the water</text>`;
       [1, -1].forEach(k => s += `<text x="${m.l + 4}" y="${y(k * span) + (k > 0 ? -6 : 14)}" fill="#5b6479" font-size="11">${pct(k * span, 0)}</text>`);
@@ -240,7 +251,9 @@
       ["Value", eur(p.value), ""],
       ["Return", pct(p.ret, 2), ud(p.ret)],
       ["vs S&P 500", p.type === "index" ? "—" : pct(p.vsIdx, 2), ud(p.vsIdx)],
-      [p.type === "monkey" || p.type === "index" ? "Rank" : "Beats monkeys", isAgent || p.type === "equal" ? (p.beatsMonkeys == null ? "—" : nf(p.beatsMonkeys * 100) + "%") : "—", ""],
+      p.pctAll != null
+        ? [`Beats ${nf(L.n)} monkeys`, nf(p.pctAll * 100) + "%", p.pctAll >= 0.95 ? "up" : "", `Better than ${nf(p.pctAll * 100)}% of all random monkeys; ${nf((p.pctMirror || 0) * 100)}% of those copying its rules`]
+        : [p.type === "monkey" || p.type === "index" ? "Rank" : "Beats monkeys", isAgent || p.type === "equal" ? (p.beatsMonkeys == null ? "—" : nf(p.beatsMonkeys * 100) + "%") : "—", ""],
       ["Worst drop", p.mdd ? pct(-p.mdd, 1) : "0%", p.mdd > 0.0001 ? "down" : ""],
       [isAgent ? "Rank · score" : "Days", isAgent ? `#${p.rank}${p.score != null ? ` · ${nf(p.score, 2)}` : ""}` : nf(p.days), ""],
     ];
@@ -260,8 +273,8 @@
     return `<article class="sheet" role="dialog" aria-modal="true" aria-label="${esc(label(p))}">
       <div class="hd">${isAgent ? `<span class="gem" style="background:${colorOf(p)}"></span>` : shape(p)}<div><h1>${esc(label(p))}</h1><div class="about">${esc(sub)}</div></div>${badge}</div>
       <div class="nav"><button class="prev" aria-label="Previous">‹</button><button class="next" aria-label="Next">›</button><button class="close" aria-label="Close">✕</button></div>
-      <div class="big">${tiles.map(t => `<div><div class="l">${t[0]}</div><div class="v ${t[2]}">${t[1]}</div></div>`).join("")}</div>
-      <section class="pane chart"><h3><span>Since day zero</span><span class="k"><span><span class="dot" style="background:${colorOf(p)}"></span>${esc(label(p))}</span>${p.type !== "index" ? `<span><span class="dot" style="background:${COLORS.index}"></span>S&P 500</span>` : ""}<span><span class="dot" style="background:${COLORS.monkey};opacity:.6"></span>Monkeys</span></span></h3><div class="fill" id="chart"></div></section>
+      <div class="big">${tiles.map(t => `<div${t[3] ? ` title="${esc(t[3])}"` : ""}><div class="l">${t[0]}</div><div class="v ${t[2]}">${t[1]}</div></div>`).join("")}</div>
+      <section class="pane chart"><h3><span>Since day zero</span><span class="k"><span><span class="dot" style="background:${colorOf(p)}"></span>${esc(label(p))}</span>${p.type !== "index" ? `<span><span class="dot" style="background:${COLORS.index}"></span>S&P 500</span>` : ""}<span title="${A.luck ? `90% of ${nf(A.luck.n)} random monkeys end up in this band` : "Range of the 10 live monkeys"}"><span class="dot" style="background:${COLORS.monkey};opacity:.6"></span>Luck band</span></span></h3><div class="fill" id="chart"></div></section>
       <section class="pane dna">${dnaPane}</section>
       <section class="pane hold"><h3><span>Holdings · ${p.hold.length}</span><span class="k" title="Tile size = share of the portfolio; colour = gain since bought">size = weight · colour = gain</span></h3><div class="fill" style="overflow:hidden">${hold}</div></section>
       <section class="pane log"><h3><span>Latest moves</span><span class="k">filled at the open, after the night's decision</span></h3><div class="fill" style="overflow:hidden">${moves}</div></section>
@@ -277,7 +290,7 @@
     const dates = A.meta.dates, o = Math.max(0, dates.indexOf(p.from));
     const base = p.s[0] || 1, mine = p.s.map(v => v / base - 1);
     const ix = idx && p.type !== "index" ? idx.s.slice(o).map((v, i, a) => v / a[0] - 1) : [];
-    const band = (A.band || []).slice(o).map(b => b && [b[0] / model.capital - 1, b[1] / model.capital - 1]);
+    const band = A.luck && A.luck.s ? A.luck.s.slice(o) : (A.band || []).slice(o).map(b => b && [b[0] / model.capital - 1, b[1] / model.capital - 1]);
     const all = [0, ...mine, ...ix, ...band.flat().filter(v => v != null)];
     let lo = Math.min(...all), hi = Math.max(...all); if (hi - lo < 0.01) { hi += 0.005; lo -= 0.005; }
     const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
@@ -347,7 +360,7 @@
       <h2>How to read the arena</h2>
       <div><span class="ic"><span class="gem" style="background:${COLORS.trend}"></span></span><span><b>Each crystal is an agent</b>Colour = strategy. Bigger = more money.</span></div>
       <div><span class="ic"><span class="wave"></span></span><span><b>The water is the S&P 500</b>Above the water = beating the index. Below = losing to it.</span></div>
-      <div><span class="ic"><span class="dot" style="background:${COLORS.monkey}"></span></span><span><b>Grey stones are monkeys</b>Same rules, random picks. Skill means beating them.</span></div>
+      <div><span class="ic"><span class="dot" style="background:${COLORS.monkey}"></span></span><span><b>Grey stones and the luck band</b>Monkeys follow the same rules but pick at random. 90% of 1,000 of them end up inside the grey band. Only agents above it show more than luck.</span></div>
       <div><span class="ic"><span class="dot" style="border:2px solid #fff"></span></span><span><b>White ring: equal weight</b>Every company in equal parts, never touched.</span></div>
       <div><span class="ic">🏆</span><span><b>Podium</b>Ranked by return over the index per unit of extra risk. "Merit" only after 6 months and beating 95% of monkeys.</span></div>
       <div><span class="ic">👆</span><span><b>Click anything</b>Opens its card: value, DNA, holdings and every move with its reason.</span></div>

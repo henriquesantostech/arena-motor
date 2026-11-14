@@ -134,7 +134,31 @@ def build_data(archive, days):
            "eurusd": m.get("eurusd"), "aboveMa200": m.get("above_ma"),
            "orders": sum(len(p["pending"]) for p in state["participants"].values()),
            "excluded": len(last["checks"]["excluded"])}
-    return {"meta": {**meta, "updated": today, "dates": days}, "species": species, "p": out, "band": band, "day": day}
+    luck = _luck(archive, days, out)
+    return {"meta": {**meta, "updated": today, "dates": days}, "species": species, "p": out, "band": band,
+            "luck": luck, "day": day}
+
+
+def _luck(archive, days, out):
+    """Luck band from the 1,000 offline monkeys (monkeys/summary.json), if the night produced it.
+    Adds to each agent its percentile against all monkeys and against the monkeys that mirror it."""
+    f = archive.root / "monkeys" / "summary.json"
+    if not f.exists():
+        return None
+    try:
+        s = json.loads(f.read_text(encoding="utf-8"))
+        b = s["luck_band"]
+        by_date = dict(zip(b["dates"], zip(b["p05"], b["p95"])))
+        series = [[round(by_date[d][0], 6), round(by_date[d][1], 6)] if d in by_date else None for d in days]
+        for p in out:
+            a = s.get("agents", {}).get(p["name"])
+            if a:
+                p["pctAll"] = a.get("percentile_vs_all_monkeys")
+                p["pctMirror"] = a.get("percentile_vs_mirroring_monkeys")
+        return {"n": s.get("monkeys"), "date": s.get("date"), "p05": _r(s.get("return_p05")), "median": _r(s.get("return_median")),
+                "p95": _r(s.get("return_p95")), "best": _r(s.get("best_of_n")), "s": series}
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):   # a malformed file never breaks the site
+        return None
 
 
 def _prices(archive, last):
