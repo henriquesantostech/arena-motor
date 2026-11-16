@@ -8,7 +8,7 @@
     "build": "tsc --noEmit -p . && vite build && node scripts/budget.mjs",
     "preview": "vite preview",
     "fixture": "node scripts/fixture.mjs",
-    "test": "node --test tests/gate.test.mjs",
+    "test": "node --test tests/gate.test.mjs tests/ask.test.mjs",
     "perf": "node scripts/fixture.mjs .perf && node scripts/perf.mjs"
   },
   "dependencies": {

@@ -52,7 +52,7 @@ jobs:
           node-version: "22"
 
       - name: Test the login gate
-        run: node --test site/tests/gate.test.mjs
+        run: node --test site/tests/gate.test.mjs site/tests/ask.test.mjs
 
       - name: Publish behind the login
         env:

@@ -67,12 +67,20 @@ const vars = {
 await cf("PATCH", `/accounts/${acc}/pages/projects/${PROJECT}`, { deployment_configs: { production: { env_vars: vars }, preview: { env_vars: vars } } });
 console.log(`sign-in ok (${users.length} account(s) allowed)`);
 
+// 2b. Copilot (ASK): Workers AI binding for the Pages Function. Never fatal: without it ASK answers "search only".
+{
+  const r = await fetch(`${API}/accounts/${acc}/pages/projects/${PROJECT}`, {
+    method: "PATCH", headers: { Authorization: `Bearer ${E.CLOUDFLARE_API_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ deployment_configs: { production: { ai_bindings: { AI: {} } }, preview: { ai_bindings: { AI: {} } } } }),
+  }).then(x => x.json()).catch(() => ({}));
+  console.log(r.success ? "copilot AI binding ok" : "copilot AI binding not set (ASK will answer in search-only mode)");
+}
+
 // 3. Upload site + gate together
 function upload(folder) {
   const stage = mkdtempSync(join(tmpdir(), "arena-"));
   cpSync(folder, join(stage, "public"), { recursive: true });
-  mkdirSync(join(stage, "functions"));
-  cpSync(join(here, "functions", "_middleware.js"), join(stage, "functions", "_middleware.js"));
+  cpSync(join(here, "functions"), join(stage, "functions"), { recursive: true });   // login gate + /api/ask
   execFileSync("npx", ["--yes", WRANGLER, "pages", "deploy", "public", "--project-name", PROJECT, "--branch", "main", "--commit-dirty=true"], {
     cwd: stage, stdio: ["ignore", "ignore", "inherit"], env: { ...E, CLOUDFLARE_ACCOUNT_ID: acc }, shell: process.platform === "win32",
   });
@@ -81,7 +89,7 @@ upload(dir);
 
 // 4. Check from outside (the address and the deployment's own address): page and data must ask for a login.
 async function gated(base) {
-  for (const path of ["/", "/data/arena.json", "/index.html", "/favicon.svg"]) {
+  for (const path of ["/", "/data/arena.json", "/data/corpus.json", "/api/ask", "/index.html"]) {
     let ok = false;
     for (let i = 0; i < 6 && !ok; i++) {
       const r = await fetch(base + path, { redirect: "manual" }).catch(() => null);
