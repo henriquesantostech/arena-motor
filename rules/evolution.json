@@ -1,0 +1,63 @@
+{
+ "version": "1.2",
+ "registered_on": "2026-11-16",
+ "effective_from": "2026-11-17",
+ "note": "Evolution rules (design v1.1 ch. 6.2, design v2 §8.2). Pre-registered before any use. Applies only to nights on or after effective_from; past nights are never rewritten. Any change is logged in rules/changes.md and applies only from then on.",
+ "calendar": {
+  "evaluation_day": "first trading day of each calendar month (New York calendar, as in the journal)",
+  "life_start": "the first trading day after a participant's birth day (its first possible fill)",
+  "eligible_after_months": 3,
+  "eligibility": "an agent is evaluated when (year*12 + month of the evaluation day) - (year*12 + month of its life_start) >= eligible_after_months. Only agents are evaluated; live monkeys and benchmarks never evolve or die."
+ },
+ "fitness": {
+  "measure": "arena.metrics score since birth: annualised information ratio of daily returns against the S&P 500 (EUR) over the same days, minus 10 x (max drawdown - 25%) when the drawdown exceeds 25% (rules.json metrics). Whole life since birth, so it averages over several months (design 6.4, smoothed evaluation)",
+  "tie_break": ["higher return minus index over the same period", "name (alphabetical)"],
+  "missing": "an eligible agent without a score (fewer than metrics.min_days_for_score days) ranks last"
+ },
+ "selection": {
+  "deaths": 4,
+  "min_survivors_among_eligible": 5,
+  "rule": "deaths = min(4, eligible - 5), never negative. The worst `deaths` eligible agents leave the arena for the graveyard; their record and history stay visible forever",
+  "parents_pool": 5,
+  "parents_rule": "the 5 best eligible agents by fitness (after removing the dead)"
+ },
+ "birth": {
+  "children": 3,
+  "immigrants": 1,
+  "rule": "children = min(3, deaths), immigrants = deaths - children; each newborn starts with initial_capital_eur in cash on the evaluation day, decides that night and trades from the next open. It inherits DNA only, never a portfolio",
+  "parent_choice": "for each child, 2 distinct parents drawn uniformly from the parents pool; parent A is the better-ranked of the two",
+  "crossover": "uniform: each gene (every signal weight and every management gene) comes from parent A or parent B with probability 1/2",
+  "weight_mutation": "every admitted signal weight moves by an integer drawn uniformly from -5..+5 percentage points, floored at 0; weights of signals not yet admitted stay 0; then the weights are rescaled to integers adding up to 100 (largest remainder, ties by signal order). If all admitted weights are 0, parent A's weights are kept",
+  "management_mutation": "each management gene moves one step up or down its grid (probability 1/2 each way, staying inside the grid) with probability 0.25",
+  "immigrant": "admitted signal weights from a flat Dirichlet(1) x 100, rounded to integers adding up to 100 (largest remainder); each management gene drawn uniformly from its grid",
+  "repair": "after crossover and mutation: max_weight is raised to at least ceil(100 / n_holdings) / 100 and capped at portfolio.max_weight_global, so the portfolio can be fully invested",
+  "admitted_signals": ["mom_1m", "mom_3m", "mom_6m", "mom_12m", "rev_1w", "rev_1m", "low_risk", "near_high"],
+  "admitted_note": "Only the 8 price signals are admitted. A signal enters this list only after passing the Signal Lab gates and a logged rule change",
+  "grids": {
+   "n_holdings": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+   "max_weight": [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2],
+   "review_days": [3, 5, 10, 15, 21, 42],
+   "threshold": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+   "stop_loss": [null, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25],
+   "brake": [0.0, 0.25, 0.3, 0.5, 0.75],
+   "min_hold_days": [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60],
+   "rank_band": [0, 2, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]
+  },
+  "off_grid": "a value not on its grid (none among the founders) is moved to the nearest grid value before mutating",
+  "random_draws": "numpy default_rng seeded with the first 16 hex digits of sha256('evolution|<evaluation day>'); draws in this order: parents and crossover and mutation of child 1, 2, 3, then the immigrant"
+ },
+ "identity": {
+  "species": "a child takes parent A's species; an immigrant takes the species whose generation-1 mean weights are closest by cosine similarity (ties by species order) and is flagged immigrant: true",
+  "name": "species prefix + the next free two-digit number for that prefix, counting every agent ever born (e.g. Arrow-05)",
+  "generation": "generation 1 = the founders and every immigrant (a new lineage); a child = 1 + the larger of its parents' generations",
+  "cohort": "0 = founders; then the number of the evaluation at which it was born (1, 2, ...)",
+  "slot": "the 20 seats are numbered 0..19 in founder order. Each newborn takes the seat of a dead agent (worst death first: children in order, then the immigrant). The offline monkeys mirror seats, not names"
+ },
+ "graveyard": "on death: pending orders are cancelled and the portfolio is frozen at that night's value; the full participant record moves to state.graveyard[name] with died, rank, eligible, fitness and value. Nothing is deleted",
+ "journal": "on an evaluation night only, the package gets the key `evolution` (evaluation number, ranking with fitness, deaths, births with parents and gene deltas). Other nights are unchanged.",
+ "null_evolution": {
+  "worlds": 10,
+  "rule": "Design v2 §8.2.3. The same calendar, fitness, selection, crossover, mutation, repair and naming are applied to 10 separate worlds of 20 random agents (ghosts). Ghosts start with the 20 founders' DNA but pick stocks at random every review day (monkey scores, seed 'ghost-<world>|<name>'), so their weights do nothing. Same universe, exclusions, fills, costs, dividends and splits. Random draws of world w use 'null-<w>|<evaluation day>'. Ghosts never affect the arena; recomputed from the journal and raw data every night (rows already computed must replay identically)",
+  "comparison": "at every evaluation: mean fitness of the agents' top 5 and the best fitness, against the same in each ghost world (rank among the 10 worlds). If evolved ghosts produce winners as good as the agents, selection is fitting noise"
+ }
+}

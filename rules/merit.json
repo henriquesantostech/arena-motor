@@ -1,0 +1,54 @@
+{
+ "version": "1.2",
+ "registered_on": "2026-11-16",
+ "effective_from": "2026-11-17",
+ "note": "Merit statistics and merit badge v2 (design v2 §8.1 and §8.2.4). Pre-registered before any use. Shown for every agent; computed every night from the journal (never stored in it), so they never rewrite a past night. Results of a trial or a technical rehearsal are never evidence.",
+ "returns": "daily simple returns of the participant's value in EUR at the close, net of every cost, from its birth day (first value) to the evaluation day. Cash earns nothing in the arena, so no risk-free rate is subtracted",
+ "trading_days_per_year": 252,
+ "sharpe": {
+  "definition": "SR = mean(r) / std(r, ddof=1), per day; annualised x sqrt(252) only for display",
+  "min_days": 20
+ },
+ "dsr": {
+  "reference": "Bailey & Lopez de Prado (2014), The Deflated Sharpe Ratio, J. Portfolio Management 40(5)",
+  "psr": "PSR(SR*) = Phi( (SR - SR*) sqrt(T - 1) / sqrt(1 - g3 SR + (g4 - 1)/4 SR^2) ), with g3 = sample skewness and g4 = sample kurtosis (not excess) of the daily returns, T = number of daily returns",
+  "sr_star": "expected maximum Sharpe ratio of N_eff unskilled trials: sqrt(V) ((1 - gamma) Phi^-1(1 - 1/N_eff) + gamma Phi^-1(1 - 1/(N_eff e))), gamma = Euler-Mascheroni constant, V = cross-sectional variance (ddof=1) of the per-day Sharpe ratios of every trial",
+  "trials": "every agent ever born in this arena (alive or in the graveyard) with at least sharpe.min_days daily returns counts as one trial. The count only grows (cumulative). Monkeys, ghosts and benchmarks are not trials",
+  "correlation_adjustment": "N_eff = rho + (1 - rho) N, rho = mean pairwise correlation of daily returns over the days two trials overlap (pairs overlapping at least 20 days; rho floored at 0). With N_eff < 2 there is nothing to deflate: SR* = 0 (DSR = PSR(0))",
+  "threshold": 0.95
+ },
+ "min_trl": {
+  "reference": "Bailey & Lopez de Prado (2012), The Sharpe Ratio Efficient Frontier, J. Risk 15(2)",
+  "definition": "MinTRL = 1 + (1 - g3 SR + (g4 - 1)/4 SR^2) (Phi^-1(0.95) / (SR - 0))^2 daily observations, shown also in years (/252). Undefined (shown as 'never') when SR <= 0",
+  "sanity": "normal returns, annual Sharpe 1.0 -> about 2.7 years; 0.5 -> about 10.8 years"
+ },
+ "best_of_monkeys": {
+  "statistic": "annualised information ratio against the S&P 500 (EUR): mean(r - r_index) / std(r - r_index, ddof=1) x sqrt(252), over the agent's life (same days for everyone)",
+  "monkeys": "the 1,000 offline monkeys (monkeys/values.csv), returns over the same days as the agent",
+  "bootstrap": "circular block bootstrap of the days (one set of resampled days shared by the agent, every monkey and the index, so cross-sectional correlation is kept); block length = max(21, the agent's min_hold_days); B = 1,000; seed = first 16 hex digits of sha256('best-of-n|<agent>|<day>')",
+  "outputs": "best-of-N distribution = the maximum monkey statistic in each resample; p95 of that distribution; p-value = (1 + #resamples whose best monkey >= the agent's observed statistic) / (B + 1); the agent's percentile within the distribution",
+  "min_days": 20
+ },
+ "alpha": {
+  "regression": "r_agent = a + b_mkt MKT + b_mom MOM + b_lv LOWVOL + e, daily, by ordinary least squares over the agent's life",
+  "factors": {
+   "MKT": "daily return of the S&P 500 (EUR) benchmark participant",
+   "MOM": "equal-weighted daily return (split-adjusted close to close, in USD) of the top third minus the bottom third of the companies ranked on the previous night's raw mom_12m in the journal (12-month return skipping the last month)",
+   "LOWVOL": "same with the previous night's raw low_risk (minus 63-day volatility): least volatile third minus most volatile third"
+  },
+  "t_stat": "Newey-West (Bartlett kernel) standard errors with lag 5",
+  "shown": "alpha annualised (x 252), its t-stat and the three betas",
+  "min_days": 60
+ },
+ "badge_v2": {
+  "merit_when_all": [
+   "at least 252 trading days of life (12 months)",
+   "DSR >= 0.95",
+   "information ratio above the p95 of the best-of-1,000-monkeys bootstrap distribution",
+   "return since birth above the S&P 500 (EUR) over the same days, net of costs"
+  ],
+  "otherwise": "provisional",
+  "replaces": "badge v1 (rules.json metrics.merit_min_days / merit_monkey_percentile) from effective_from",
+  "evidence": "only in an arena whose mode is official; in a trial or technical rehearsal the badge is shown as 'rehearsal' and never counts"
+ }
+}
