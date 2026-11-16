@@ -12,8 +12,8 @@ export function Shape({ p }: { p: Participant }) {
       : <span className="dot" style={{ background: c }} />;
 }
 
-export function Top({ M, i, tier, setTier, gl, lens, setLens, onHelp, onPalette }: {
-  M: Model; i: number; tier: Tier; setTier: (t: Tier) => void; gl: boolean; lens: Lens; setLens: (l: Lens) => void; onHelp: () => void; onPalette: () => void;
+export function Top({ M, i, tier, setTier, gl, lens, setLens, onHelp, onPalette, onAsk, asking }: {
+  M: Model; i: number; tier: Tier; setTier: (t: Tier) => void; gl: boolean; lens: Lens; setLens: (l: Lens) => void; onHelp: () => void; onPalette: () => void; onAsk: () => void; asking: boolean;
 }) {
   const live = M.A.meta.mode === "live", past = i !== M.last;
   return (
@@ -29,6 +29,7 @@ export function Top({ M, i, tier, setTier, gl, lens, setLens, onHelp, onPalette 
         {(["today", "arena", "evolution", "journal"] as Lens[]).map(l => <button key={l} aria-pressed={lens === l} onClick={() => setLens(l)}>{l.toUpperCase()}</button>)}
       </nav>
       <div className="tools">
+        <button className={"askbtn" + (asking ? " on" : "")} onClick={onAsk} title="Ask the copilot (press /)"><span className="askdot" />ASK</button>
         <button className="chip kbd" onClick={onPalette} title="Search agents, days and lenses">⌘K</button>
         <div className="seg" role="group" aria-label="Quality">
           {(["ultra", "high", "lite"] as Tier[]).map(t => (
@@ -255,6 +256,7 @@ export function Help({ M, onClose }: { M: Model; onClose: () => void }) {
         <div><span className="ic">⏵</span><span><b>Time Machine</b>Drag the timeline or press play: the whole arena replays any night exactly as it was.</span></div>
         <div><span className="ic">?</span><span><b>Why? and Verify</b>In a card, tap any trade: see what drove it, and recompute it in your browser from that night's readings.</span></div>
         <div><span className="ic">⌘K</span><span><b>Search</b>Jump to any agent, day or lens.</span></div>
+        <div><span className="ic">/</span><span><b>ASK</b>Ask in any language, typed or spoken. Answers only from the archive, with sources; can also move the arena for you.</span></div>
         <p>Each agent starts with €{nf(M.A.meta.capital)} of simulated money on the S&P 100. Decisions at night, filled at the next open, with real costs. Not investment advice. Rules v{M.A.meta.rules} · engine {M.A.meta.engine}.</p>
       </div>
     </div>

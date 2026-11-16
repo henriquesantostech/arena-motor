@@ -5,6 +5,8 @@ import { Board, Help, Kpis, Legend, Palette, Podium, TimeMachine, Tip, Top, type
 import { Today } from "./Today";
 import { Journal } from "./Journal";
 import { Evolution } from "./Evolution";
+import { Ask } from "./Ask";
+import type { Action } from "./copilot";
 import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
 
@@ -42,6 +44,7 @@ function Ready({ A }: { A: Arena }) {
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
   const [board, setBoard] = useState(false);
+  const [asking, setAsking] = useState(false);
 
   useEffect(() => { performance.mark("arena:ui"); report(); }, []);
 
@@ -61,6 +64,7 @@ function Ready({ A }: { A: Arena }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette(p => !p); return; }
+      if (e.key === "/" && (e.target as HTMLElement)?.tagName !== "INPUT") { e.preventDefault(); setAsking(true); return; }
       if (e.key === "Escape") { if (palette) setPalette(false); else if (open) show(null); else setHelp(false); return; }
       const typing = (e.target as HTMLElement)?.tagName === "INPUT";
       if (!open && !palette && !typing && lens === "arena") {
@@ -82,6 +86,12 @@ function Ready({ A }: { A: Arena }) {
   useEffect(() => { if (tier === "lite") setWorldUp(false); }, [tier]);
   const at = lens === "today" || lens === "evolution" ? M.last : i;
   const setDay = useCallback((n: number) => { setPlaying(false); setI(n); }, []);
+  const onAction = useCallback((a: Action) => {
+    if (a.type === "lens" && a.lens) setLens(a.lens as Lens);
+    if (a.type === "date" && a.d) { const k = M.A.meta.dates.indexOf(a.d); if (k >= 0) setDay(k); }
+    if (a.type === "open" && a.id) show(a.id);
+    if (a.type === "close") show(null);
+  }, [M, setDay, show]);
 
   return (
     <>
@@ -92,7 +102,7 @@ function Ready({ A }: { A: Arena }) {
       </div>
       <div className="grain" />
       <main className={"hud lens-" + lens}>
-        <Top M={M} i={at} tier={tier} setTier={setTier} gl={gl} lens={lens} setLens={setLens} onHelp={() => setHelp(true)} onPalette={() => setPalette(true)} />
+        <Top M={M} i={at} tier={tier} setTier={setTier} gl={gl} lens={lens} setLens={setLens} onHelp={() => setHelp(true)} onPalette={() => setPalette(true)} onAsk={() => setAsking(a => !a)} asking={asking} />
         {lens === "today" ? <Today M={M} onPick={show} setLens={setLens} />
           : lens === "journal" ? <Journal M={M} i={i} setI={setDay} onPick={show} />
             : lens === "evolution" ? <Evolution M={M} onPick={show} /> : <>
@@ -108,6 +118,7 @@ function Ready({ A }: { A: Arena }) {
       <Tip M={M} i={at} tip={tip} />
       {open && M.byId[open] && <AgentCard M={M} p={M.byId[open]} at={at} onClose={() => show(null)} onGo={show} />}
       {help && <Help M={M} onClose={() => setHelp(false)} />}
+      {asking && <Ask M={M} i={i} onAction={onAction} onClose={() => setAsking(false)} />}
       {palette && <Palette M={M} onClose={() => setPalette(false)} onPick={show} setI={setDay} setLens={setLens} />}
     </>
   );

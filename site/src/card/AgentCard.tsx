@@ -98,7 +98,7 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
                 <span className={"k-" + (l.next ? "next" : l.k)}>{l.k}</span>
                 <b>{tick(l.t)}</b>
                 <span className="num">{l.eur != null ? eur(l.eur) : l.ratio ? "×" + l.ratio : ""}</span>
-                <span className="why">{l.r?.score != null ? <><span className="num">score {nf(l.r.score, 2)}</span> · <span className="num">#{l.r.rank}/{l.r.of}</span> · {causeLabel(l.r)}</> : l.why || ""}</span>
+                <span className="mwhy">{l.r?.score != null ? <><span className="num">score {nf(l.r.score, 2)}</span> · <span className="num">#{l.r.rank}/{l.r.of}</span> · {causeLabel(l.r)}</> : l.why || ""}</span>
               </button>
             ))}
             {!decisions.length && <div className="empty">No moves yet. Orders are placed at night and filled at the next open.</div>}

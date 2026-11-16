@@ -136,7 +136,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mt { position: absolute; border: 1px solid rgba(3, 6, 14, .9); border-radius: 7px; padding: 5px 7px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; font-size: 12px; line-height: 1.2 }
 .mt b { font-weight: 650 } .mt span { font-size: 11px; color: rgba(231, 238, 252, .82) }
 .mv { display: grid; grid-template-columns: 54px 60px 54px 80px 1fr; gap: 9px; align-items: center; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, .035) }
-.mv .why { color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.mv .mwhy { color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .k-buy, .k-sell, .k-dividend, .k-split, .k-cancelled, .k-next { font: 700 10px var(--ui); letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; text-align: center }
 .k-buy { background: rgba(62, 224, 143, .14); color: var(--up) } .k-sell { background: rgba(255, 107, 107, .14); color: var(--down) }
 .k-dividend { background: rgba(56, 198, 255, .14); color: var(--index) } .k-split, .k-cancelled { background: rgba(255, 255, 255, .07); color: var(--mute) }
@@ -169,7 +169,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   .sheet .hd { padding-right: 110px; flex-wrap: wrap }
   .tiles6 { grid-template-columns: repeat(3, minmax(0, 1fr)) }
   .chart, .dna, .holdings, .moves { grid-column: 1; grid-row: auto; min-height: 230px }
-  .mv { grid-template-columns: 46px 54px 48px 72px } .mv .why { grid-column: 1 / -1 }
+  .mv { grid-template-columns: 46px 54px 48px 72px } .mv .mwhy { grid-column: 1 / -1 }
   .help { grid-template-columns: 1fr }
 }
 @media (max-height: 680px) and (min-width: 821px) { .kpi .v { font-size: 22px } .kpi { padding: 9px 13px } .row { padding: 1px 10px; font-size: 12px } }
@@ -327,3 +327,32 @@ button.jrow:hover { background: rgba(140, 190, 255, .06); border-radius: 6px }
   .evo { grid-template-columns: 1fr; overflow: auto }
   .dock button { padding: 0 9px; font-size: 10.5px; letter-spacing: .08em }
 }
+
+/* ---------- X4: ASK copilot ---------- */
+.askbtn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 16px; border-radius: 99px; font-weight: 700; letter-spacing: .2em; font-size: 12px;
+  border: 1px solid rgba(140, 200, 255, .45); background: linear-gradient(180deg, rgba(120, 190, 255, .22), rgba(176, 124, 255, .12)); box-shadow: 0 0 22px rgba(90, 170, 255, .3) }
+.askbtn.on { box-shadow: 0 0 30px rgba(120, 200, 255, .6) }
+.askdot { width: 8px; height: 8px; border-radius: 50%; background: conic-gradient(var(--index), var(--wave), var(--rock), var(--index)); box-shadow: 0 0 10px var(--index); animation: breathe 2s ease-in-out infinite; display: inline-block }
+.ask { position: fixed; z-index: 45; right: var(--gap); top: 64px; bottom: var(--gap); width: min(420px, calc(100vw - 2 * var(--gap))); display: flex; flex-direction: column; padding: 12px; gap: 10px; background: rgba(6, 11, 24, .92); animation: rise .3s var(--ease) }
+.ask > header { display: flex; justify-content: space-between; align-items: center }
+.ask .lbl { display: inline-flex; align-items: center; gap: 8px }
+.ask .chip.on { color: var(--up); border-color: rgba(62, 224, 143, .4) }
+.ask .chip { cursor: pointer }
+.askbody { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px }
+.asksug { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
+.asksug .chip { height: auto; padding: 7px 12px; text-align: left; color: var(--text) }
+.amsg { max-width: 92%; display: flex; flex-direction: column; gap: 6px }
+.amsg.me { align-self: flex-end; background: rgba(120, 190, 255, .14); border: 1px solid rgba(140, 200, 255, .25); padding: 8px 12px; border-radius: 14px 14px 4px 14px }
+.amsg.ai { align-self: flex-start }
+.amsg.ai .atext { padding: 10px 12px; border-radius: 14px 14px 14px 4px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); line-height: 1.5; font-size: 13.5px }
+.acites { display: flex; flex-wrap: wrap; gap: 6px }
+.cite { font: 11px var(--num); color: #9fd8ff; padding: 3px 8px; border-radius: 7px; background: rgba(56, 198, 255, .08); border: 1px solid rgba(56, 198, 255, .2); text-align: left }
+.cite:hover { border-color: rgba(56, 198, 255, .5) }
+.ameta { font-size: 10.5px; color: var(--faint); letter-spacing: .04em }
+.typing { display: flex; gap: 5px } .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--mute); animation: breathe 1s infinite }
+.typing i:nth-child(2) { animation-delay: .15s } .typing i:nth-child(3) { animation-delay: .3s }
+.askin { display: flex; gap: 8px; align-items: center }
+.askin input { flex: 1; height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--edge); background: rgba(255, 255, 255, .04); color: var(--text); font: 14px var(--ui); outline: none }
+.askin input:focus { border-color: var(--edge-hi) }
+.mic.on { color: var(--down); border-color: rgba(255, 107, 107, .6); box-shadow: 0 0 16px rgba(255, 107, 107, .4) }
+@media (max-width: 820px) { .ask { top: auto; height: 70vh; left: 10px; right: 10px; width: auto } .askbtn { padding: 0 12px } }
