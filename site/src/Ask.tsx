@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { dayY, type Model } from "./data";
 import { ask, parseCommand, search, type Action, type Passage } from "./copilot";
+import { chime } from "./sound";
 
 type Msg = { who: "me" | "ai"; text: string; cites?: Passage[]; mode?: "ai" | "search" | "command"; asOf?: string; model?: string; related?: boolean };
 type SR = { lang: string; interimResults: boolean; continuous: boolean; start: () => void; stop: () => void; onresult: (e: { results: { 0: { transcript: string } }[] }) => void; onend: () => void; onerror: () => void };
@@ -55,7 +56,7 @@ export function Ask({ M, i, onAction, onClose }: { M: Model; i: number; onAction
       (r.actions || []).filter(valid).forEach(onAction);
       const cited = r.cite.map(id => byId.get(id)!).filter(Boolean);
       setMsgs(m => [...m, { who: "ai", text: r.text, cites: cited.length ? cited : passages.slice(0, 2), related: !cited.length, mode: "ai", asOf: asOf || undefined, model: (r as { model?: string }).model }]);
-      say(r.text);
+      chime(); say(r.text);
     } finally { setBusy(false); }
   }
 

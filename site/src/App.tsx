@@ -8,6 +8,7 @@ import { Evolution } from "./Evolution";
 import { Lab, People } from "./Intel";
 import { Ask } from "./Ask";
 import { Tour, tourSeen } from "./Tour";
+import { tick, whoosh } from "./sound";
 import type { Action } from "./copilot";
 import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
@@ -50,7 +51,8 @@ function Ready({ A }: { A: Arena }) {
   const gl = useMemo(hasWebGL2, []);
   const [tier, setTierState] = useState<Tier>(() => (gl ? savedTier() || detectTier() : "lite"));
   const setTier = useCallback((t: Tier) => { setTierState(t); saveTier(t); }, []);
-  const [lens, setLens] = useState<Lens>("arena");
+  const [lens, setLensState] = useState<Lens>("arena");
+  const setLens = useCallback((l: Lens) => { setLensState(p => { if (p !== l) whoosh(); return l; }); }, []);
   const [i, setI] = useState(M.last);
   const [playing, setPlaying] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -70,6 +72,7 @@ function Ready({ A }: { A: Arena }) {
     route(); addEventListener("hashchange", route); return () => removeEventListener("hashchange", route);
   }, [M]);
   const show = useCallback((id: string | null) => {
+    if (id) tick();
     setTip(null); setBoard(false); setPlaying(false);
     history.replaceState(null, "", id ? "#/" + id : location.pathname + location.search);
     setOpen(id);

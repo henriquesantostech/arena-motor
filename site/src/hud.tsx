@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { COLOR, colorOf, day, dayY, label, nf, pct, SPECIES_COLOR, tone, type Model, type Participant } from "./data";
 import type { Tier } from "./quality";
+import { setSound, soundOn, tick } from "./sound";
 
 export type TipState = { id: string; x: number; y: number } | null;
 export type Lens = "today" | "arena" | "evolution" | "journal" | "world" | "network" | "lab" | "people";
@@ -37,10 +38,17 @@ export function Top({ M, i, tier, setTier, gl, lens, setLens, onHelp, onPalette,
               title={t === "ultra" ? "Full effects" : t === "high" ? "Lighter 3D" : "2D view, no 3D"}>{t === "lite" ? "2D" : t.toUpperCase()}</button>
           ))}
         </div>
+        <SoundBtn />
         <button className="round" aria-label="How to read" title="How to read" onClick={onHelp}>?</button>
       </div>
     </header>
   );
+}
+
+function SoundBtn() {
+  const [on, setOn] = useState(soundOn());
+  return <button className={"round" + (on ? " sndon" : "")} aria-pressed={on} aria-label={on ? "Sound on" : "Sound off"} title={on ? "Sound on" : "Sound off (default)"}
+    onClick={() => { setSound(!on); setOn(!on); }}>{on ? "♪" : "♪̸"}</button>;
 }
 
 export function Kpis({ M, i, onPick }: { M: Model; i: number; onPick: (id: string) => void }) {
@@ -166,7 +174,7 @@ export function TimeMachine({ M, i, setI, playing, setPlaying }: { M: Model; i: 
     const t = setInterval(() => {
       const k = ref.current + 1;
       if (k > M.last) { setPlaying(false); return; }
-      setI(k);
+      tick(); setI(k);
     }, 520 / speed);
     return () => clearInterval(t);
   }, [playing, speed, M.last, setI, setPlaying]);

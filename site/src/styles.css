@@ -435,3 +435,4 @@ button.jrow:hover { background: rgba(140, 190, 255, .06); border-radius: 6px }
 @keyframes tbar { from { width: 0 } to { width: 100% } }
 .tbtn { display: flex; justify-content: flex-end; gap: 8px } .tbtn .chip { cursor: pointer }
 .tcap[style] { bottom: auto }
+.round.sndon { color: var(--index); border-color: rgba(56, 198, 255, .5) }
