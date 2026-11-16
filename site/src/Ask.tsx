@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { dayY, type Model } from "./data";
 import { ask, parseCommand, search, type Action, type Passage } from "./copilot";
 
-type Msg = { who: "me" | "ai"; text: string; cites?: Passage[]; mode?: "ai" | "search" | "command"; asOf?: string; model?: string };
+type Msg = { who: "me" | "ai"; text: string; cites?: Passage[]; mode?: "ai" | "search" | "command"; asOf?: string; model?: string; related?: boolean };
 type SR = { lang: string; interimResults: boolean; continuous: boolean; start: () => void; stop: () => void; onresult: (e: { results: { 0: { transcript: string } }[] }) => void; onend: () => void; onerror: () => void };
 
 const SUGGEST = ["Who is leading and why?", "Show Rock-02", "What happened on the first trading day?", "How does the luck band work?"];
@@ -53,7 +53,8 @@ export function Ask({ M, i, onAction, onClose }: { M: Model; i: number; onAction
       }
       const byId = new Map(passages.map(p => [p.id, p]));
       (r.actions || []).filter(valid).forEach(onAction);
-      setMsgs(m => [...m, { who: "ai", text: r.text, cites: r.cite.map(id => byId.get(id)!).filter(Boolean), mode: "ai", asOf: asOf || undefined, model: (r as { model?: string }).model }]);
+      const cited = r.cite.map(id => byId.get(id)!).filter(Boolean);
+      setMsgs(m => [...m, { who: "ai", text: r.text, cites: cited.length ? cited : passages.slice(0, 2), related: !cited.length, mode: "ai", asOf: asOf || undefined, model: (r as { model?: string }).model }]);
       say(r.text);
     } finally { setBusy(false); }
   }
@@ -93,7 +94,7 @@ export function Ask({ M, i, onAction, onClose }: { M: Model; i: number; onAction
             {m.cites && m.cites.length > 0 && <div className="acites">
               {m.cites.map(c => <button key={c.id} className="cite" onClick={() => goto(c)} title={c.text}>{c.title}{c.d ? ` · ${c.d.slice(5)}` : ""}</button>)}
             </div>}
-            {m.who === "ai" && m.mode && <div className="ameta">{m.mode === "ai" ? `grounded answer · ${m.cites?.length || 0} sources` : m.mode === "search" ? "search only" : "interface command"}{m.model ? " · " + m.model.split("/").pop() : ""}</div>}
+            {m.who === "ai" && m.mode && <div className="ameta">{m.mode === "ai" ? (m.related ? "answer · the model cited no source; related passages shown" : `grounded answer · ${m.cites?.length || 0} sources`) : m.mode === "search" ? "search only" : "interface command"}{m.model ? " · " + m.model.split("/").pop() : ""}</div>}
           </div>
         ))}
         {busy && <div className="amsg ai"><div className="atext typing"><i /><i /><i /></div></div>}

@@ -14,7 +14,7 @@ Rules you must follow:
 - Never tell anyone to buy, sell or hold anything, never give personal investment advice. When asked for an opinion, summarise the evidence in the passages ("the evidence for X is ...") and remind that the agents are simulated.
 - Answer in the user's language (given as "lang"), in at most 120 words, plain and direct.
 - If the user asks to see something (an agent, a day, the journal, the evolution tree), add interface actions: {"type":"open","id":"<participant id from a passage ref>"}, {"type":"date","d":"YYYY-MM-DD"}, {"type":"lens","lens":"today|arena|evolution|journal"}.
-Reply with JSON only: {"answer": string, "cite": [passage ids], "actions": [...]}`;
+Reply with JSON only: {"answer": string, "cite": [passage ids], "actions": [...]}. "cite" must list the id in square brackets of every passage you used (for example "standings" or "p:arrow-01"); it may be empty only when you say you do not know.`;
 
 const hits = new Map();   // light per-isolate rate guard (the free allocation is the real cap)
 
