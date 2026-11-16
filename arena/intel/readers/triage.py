@@ -18,6 +18,7 @@ KIND_WEIGHT = {"filing:8-K": 3, "filing:8-K/A": 1, "fedreg:presidential_document
                "cb:ecb:press": 2, "news": 2, "world_event": 2, "fedreg:rule": 1, "fedreg:public_inspection": 1,
                "filing:10-Q": 1, "filing:10-K": 1, "fda:press": 2, "social:hn": 1}
 MAX_ENCODER_ITEMS = 1500   # per night; the rest (lowest priority) waits, within the 3-day window
+ROUTINE_ITEMS = {"2.03", "3.02", "5.03", "5.07", "9.01"}
 IMPORTANT_ITEMS = {"1.01", "1.02", "1.05", "2.01", "2.02", "2.05", "2.06", "3.01", "4.02", "5.01", "5.02", "7.01", "8.01"}
 
 
@@ -48,7 +49,10 @@ def _press_release(store, doc):
         r, _, _ = http.fetch(store, "sec_edgar", base + "index.json")
         files = [f["name"] for f in r.json().get("directory", {}).get("item", [])]
         ex = sorted(f for f in files if re.search(r"ex-?99", f, re.I) and f.lower().endswith((".htm", ".html", ".txt")))
-        target = ex[0] if ex else doc["url"].rsplit("/", 1)[-1]
+        main = sorted(f for f in files if f.lower().endswith((".htm", ".html")) and "index" not in f.lower())
+        target = (ex or main or [None])[0]
+        if not target:
+            return ""
         r, _, _ = http.fetch(store, "sec_edgar", base + target)
         return _html_text(r.content)[:6000]
     except http.FetchError:
@@ -67,7 +71,8 @@ def priority(doc):
     extra = _j(doc["extra"], {})
     if doc["kind"].startswith("filing:8-K"):
         items = set(extra.get("items") or [])
-        w += 2 * bool(items & IMPORTANT_ITEMS) - 3 * (items <= {"9.01", "5.07", "5.03"})
+        # routine filings (banks' note issuance under 2.03, exhibits, votes, bylaws) go below the news
+        w += 2 * bool(items & IMPORTANT_ITEMS) - 5 * (items <= ROUTINE_ITEMS)
     return w
 
 
