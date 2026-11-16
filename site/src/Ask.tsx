@@ -1,6 +1,6 @@
 // ASK panel: type or speak; the copilot answers from the archive (as known at the selected day), with
 // citations, and can drive the interface ("show Arrow-03 in March"). Voice uses the browser's own speech
-// recognition and voice, so audio is handled by the browser, never sent to our servers.
+// recognition and voice: our servers never receive audio (Chrome and Edge may use their vendor's online service).
 import { useEffect, useRef, useState } from "react";
 import { dayY, type Model } from "./data";
 import { ask, parseCommand, search, type Action, type Passage } from "./copilot";
@@ -101,7 +101,7 @@ export function Ask({ M, i, onAction, onClose }: { M: Model; i: number; onAction
         <div ref={endRef} />
       </div>
       <form className="askin" onSubmit={e => { e.preventDefault(); submit(q); }}>
-        {SRC && <button type="button" className={"round mic" + (listening ? " on" : "")} onClick={mic} aria-label={listening ? "Stop listening" : "Speak"} title="Speak">{listening ? "■" : "🎙"}</button>}
+        {SRC && <button type="button" className={"round mic" + (listening ? " on" : "")} onClick={mic} aria-label={listening ? "Stop listening" : "Speak"} title="Speak. Recognition is done by your browser (Chrome and Edge use their own online speech service); our servers never receive audio.">{listening ? "■" : "🎙"}</button>}
         <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={listening ? "Listening…" : "Ask or command: “show Arrow-03 in March”"} maxLength={600} />
         <button className="round" type="submit" aria-label="Send" disabled={busy || !q.trim()}>↑</button>
       </form>
