@@ -62,3 +62,34 @@ def test_site_uses_the_offline_monkeys(tmp_path):
     (tmp_path / "a" / "monkeys" / "summary.json").write_text("{broken", encoding="utf-8")
     build(arch)   # a broken file never breaks the site
     assert _data(tmp_path / "a")["luck"] is None
+
+
+def test_readings_fingerprint_and_recomputed_decisions(tmp_path):
+    """What the Verify button does in the browser: the readings hash matches, and every agent decision
+    recomputed from that night's readings gives the stored score and rank."""
+    import hashlib
+    from arena.site import readings_text
+    arch, days = make_archive(tmp_path / "a")
+    process(arch)
+    build(arch)
+    root = tmp_path / "a" / "site" / "data"
+    d = json.loads((root / "arena.json").read_text(encoding="utf-8"))
+    checked = 0
+    for p in d["p"]:
+        if p["type"] != "agent":
+            continue
+        for l in p["log"]:
+            r = l.get("r") or {}
+            if r.get("score") is None or not l.get("dd"):
+                continue
+            sh = json.loads((root / "days" / f"{l['dd']}.json").read_text(encoding="utf-8"))
+            sig = sh["sig"]
+            assert hashlib.sha256(readings_text(sig["cols"], sig["z"]).encode()).hexdigest() == sig["sha256"]
+            skip = set(sh["excluded"]) | set(sh["delisted"])
+            sc = {t: round(sum(v * p["dna"]["w"].get(c, 0) / 100 for v, c in zip(z, sig["cols"])), 4)
+                  for t, z in sig["z"].items() if t not in skip}
+            ranking = sorted(sc, key=lambda t: (-sc[t], t))
+            assert abs(sc[l["t"]] - r["score"]) <= 1.5e-4
+            assert ranking.index(l["t"]) + 1 == r["rank"]
+            checked += 1
+    assert checked > 0

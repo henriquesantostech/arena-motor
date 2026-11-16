@@ -13,7 +13,7 @@ const R_AGENTS = 6.2, R_MONKEYS = 3.1, H_MAX = 3.2, R_WORLD = 9.5;
 const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 type Props = {
-  M: Model; tier: Tier; paused: boolean; hover: string | null;
+  M: Model; i: number; tier: Tier; paused: boolean; hover: string | null;
   onPick: (id: string) => void; onHover: (id: string | null, x?: number, y?: number) => void;
   onReady: (w: "3d") => void; onDegrade: () => void;
 };
@@ -38,7 +38,7 @@ export default function World(props: Props) {
   );
 }
 
-function Scene({ M, tier, hover, onPick, onHover, onReady }: Props) {
+function Scene({ M, i, tier, hover, onPick, onHover, onReady }: Props) {
   const { size, camera, scene } = useThree();
   const moved = useRef(false);
   const ready = useRef(false);
@@ -63,9 +63,9 @@ function Scene({ M, tier, hover, onPick, onHover, onReady }: Props) {
 
   useFrame(() => { if (!ready.current) { ready.current = true; onReady("3d"); } });
 
-  // height scale: the largest gap (or the luck band) maps to H_MAX; at least ±4% so day zero is calm
-  const span = useMemo(() => Math.max(0.04, ...M.A.p.map(p => Math.abs(M.gap(p))), ...(M.luck ? M.luck.map(Math.abs) : [])), [M]);
-  const yOf = (g: number) => THREE.MathUtils.clamp(g / span, -1, 1) * H_MAX;
+  // height scale: the largest gap over the whole season maps to H_MAX, so replayed days are comparable
+  const yOf = (g: number) => THREE.MathUtils.clamp(g / M.span, -1, 1) * H_MAX;
+  const band = M.luckAt(i), active = M.activeAt(i), rk = M.rankAt(i).rank, started = i > 0 && M.moved;
 
   const placed = useMemo(() => {
     const per: Record<string, Participant[]> = {};
@@ -104,9 +104,9 @@ function Scene({ M, tier, hover, onPick, onHover, onReady }: Props) {
       {tier === "ultra" && !reduce && <Sparkles count={60} scale={[18, 6, 18]} size={2} speed={0.25} opacity={0.35} color="#9fd8ff" />}
       <Floor />
       <Water />
-      {M.luck && <LuckBand lo={yOf(M.luck[0])} hi={yOf(M.luck[1])} />}
+      <LuckBand lo={band ? yOf(band[0]) : 0} hi={band ? yOf(band[1]) : 0} on={!!band} />
       {placed.map(({ p, pos }) => (
-        <Figure key={p.id} p={p} pos={pos} y={yOf(M.gap(p))} tier={tier} active={M.active.has(p.id)} rank={M.moved && p.type === "agent" ? M.rank[p.id] : 0}
+        <Figure key={p.id} p={p} pos={pos} y={yOf(M.gapAt(p, i))} value={M.valueAt(p, i)} tier={tier} active={active.has(p.id)} rank={started && p.type === "agent" ? rk[p.id] : 0}
           capital={M.A.meta.capital} hot={hover === p.id} handlers={pointer} />
       ))}
       <SpeciesLabels M={M} />
@@ -150,8 +150,10 @@ function Water() {
 }
 
 // Luck band: a translucent shell between the 5th and 95th percentile of the monkeys, with glowing edges.
-function LuckBand({ lo, hi }: { lo: number; hi: number }) {
-  const h = Math.max(hi - lo, 0.04), r = R_AGENTS + 0.9;
+function LuckBand({ lo, hi, on }: { lo: number; hi: number; on: boolean }) {
+  const r = R_AGENTS + 0.9;
+  const shell = useRef<THREE.Mesh>(null), top = useRef<THREE.Mesh>(null), bottom = useRef<THREE.Mesh>(null), grp = useRef<THREE.Group>(null);
+  const cur = useRef({ lo, hi });
   const mat = useMemo(() => new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { uTime: { value: 0 } },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
@@ -162,12 +164,21 @@ function LuckBand({ lo, hi }: { lo: number; hi: number }) {
         gl_FragColor = vec4(vec3(0.72, 0.76, 0.85), 0.045 + edge * 0.18 + (1.0 - scan) * 0.03);
       }`,
   }), []);
-  useFrame((_, dt) => { if (!reduce) mat.uniforms.uTime.value += dt; });
+  useFrame((_, dt) => {
+    if (!reduce) mat.uniforms.uTime.value += dt;
+    const c = cur.current, k = reduce ? 1 : Math.min(1, dt * 6);
+    c.lo += (lo - c.lo) * k; c.hi += (hi - c.hi) * k;
+    const h = Math.max(c.hi - c.lo, 0.04);
+    if (shell.current) { shell.current.position.y = c.lo + h / 2; shell.current.scale.y = h; }
+    if (bottom.current) bottom.current.position.y = c.lo;
+    if (top.current) top.current.position.y = c.lo + h;
+    if (grp.current) grp.current.visible = on;
+  });
   return (
-    <group>
-      <mesh position-y={lo + h / 2} material={mat}><cylinderGeometry args={[r, r, h, 128, 1, true]} /></mesh>
-      {[lo, lo + h].map((yy, i) => (
-        <mesh key={i} rotation-x={-Math.PI / 2} position-y={yy}><ringGeometry args={[r - 0.025, r + 0.025, 160]} /><meshBasicMaterial color="#b9c2d6" transparent opacity={0.3} /></mesh>
+    <group ref={grp}>
+      <mesh ref={shell} material={mat}><cylinderGeometry args={[r, r, 1, 128, 1, true]} /></mesh>
+      {[bottom, top].map((ref, k) => (
+        <mesh key={k} ref={ref} rotation-x={-Math.PI / 2}><ringGeometry args={[r - 0.025, r + 0.025, 160]} /><meshBasicMaterial color="#b9c2d6" transparent opacity={0.3} /></mesh>
       ))}
     </group>
   );
@@ -177,28 +188,32 @@ const crystalGeo = (() => { const g = new THREE.OctahedronGeometry(0.42, 0); g.s
 const stoneGeo = new THREE.DodecahedronGeometry(0.26, 0);
 const stemGeo = (() => { const g = new THREE.CylinderGeometry(0.012, 0.012, 1, 6, 1, true); g.translate(0, 0.5, 0); return g; })();
 
-function Figure({ p, pos, y, tier, active, rank, capital, hot, handlers }: {
-  p: Participant; pos: [number, number, number]; y: number; tier: Tier; active: boolean; rank: number; capital: number; hot: boolean;
+function Figure({ p, pos, y, value, tier, active, rank, capital, hot, handlers }: {
+  p: Participant; pos: [number, number, number]; y: number; value: number; tier: Tier; active: boolean; rank: number; capital: number; hot: boolean;
   handlers: {
     onPointerOver: (e: ThreeEvent<PointerEvent>, id: string) => void; onPointerMove: (e: ThreeEvent<PointerEvent>, id: string) => void;
     onPointerOut: () => void; onClick: (e: ThreeEvent<MouseEvent>, id: string) => void;
   };
 }) {
-  const holder = useRef<THREE.Group>(null), body = useRef<THREE.Mesh>(null);
+  const holder = useRef<THREE.Group>(null), body = useRef<THREE.Mesh>(null), stem = useRef<THREE.Mesh>(null);
+  const curY = useRef(0);
   const col = useMemo(() => new THREE.Color(colorOf(p)), [p]);
-  const s = p.type === "agent" ? THREE.MathUtils.clamp(Math.pow((p.value || capital) / capital, 2.2), 0.6, 1.8) : 1;
+  const s = p.type === "agent" ? THREE.MathUtils.clamp(Math.pow((value || capital) / capital, 2.2), 0.6, 1.8) : 1;
   const phase = useMemo(() => Math.random() * Math.PI * 2, []);
   const t0 = useRef(performance.now());
   useFrame((st, dt) => {
     const e = reduce ? 1 : 1 - Math.pow(1 - Math.min(1, (performance.now() - t0.current) / 1400), 3);
-    if (holder.current) holder.current.position.y = y * e + (reduce ? 0 : Math.sin(st.clock.elapsedTime * 1.1 + phase) * 0.05);
+    curY.current += (y - curY.current) * (reduce ? 1 : Math.min(1, dt * 7));   // glide to the replayed day
+    const yy = curY.current * e;
+    if (holder.current) holder.current.position.y = yy + (reduce ? 0 : Math.sin(st.clock.elapsedTime * 1.1 + phase) * 0.05);
+    if (stem.current) { stem.current.scale.y = Math.max(Math.abs(yy), 0.001); stem.current.rotation.x = yy < 0 ? Math.PI : 0; }
     if (body.current) {
       if (!reduce) body.current.rotation.y += dt * 0.35;
       const target = s * (hot ? 1.25 : 1);
       body.current.scale.setScalar(THREE.MathUtils.lerp(body.current.scale.x, target, 0.2));
-      if (active && !reduce) {
+      if (p.type === "agent") {
         const m = body.current.material as THREE.MeshStandardMaterial;
-        m.emissiveIntensity = 1.1 + 0.6 * Math.sin(st.clock.elapsedTime * 2.4 + phase);
+        m.emissiveIntensity = active && !reduce ? 1.1 + 0.6 * Math.sin(st.clock.elapsedTime * 2.4 + phase) : active ? 1.4 : (tier === "ultra" ? 0.55 : 0.35);
       }
     }
   });
@@ -225,7 +240,7 @@ function Figure({ p, pos, y, tier, active, rank, capital, hot, handlers }: {
         )}
         {rank > 0 && rank <= 3 && <Medal rank={rank} y={1.05 * s} />}
       </group>
-      <mesh geometry={stemGeo} scale={[1, Math.max(Math.abs(y), 0.001), 1]} rotation-x={y < 0 ? Math.PI : 0}>
+      <mesh ref={stem} geometry={stemGeo}>
         <meshBasicMaterial color={col} transparent opacity={0.45} toneMapped={false} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position-y={0.01}><circleGeometry args={[0.09, 20]} /><meshBasicMaterial color={col} transparent opacity={0.85} toneMapped={false} /></mesh>

@@ -6,6 +6,7 @@ the private archive (and online only behind the login):
   data/days/YYYY-MM-DD.json  one shard per night for the Time Machine: values, holdings, trades,
                              market and the journal's fingerprints (provenance)
 """
+import hashlib
 import json
 import re
 import shutil
@@ -38,7 +39,7 @@ def build(archive):
     out = archive.root / "site"
     days = archive.journal_days()
     data = build_data(archive, days)   # first: a failure leaves the old site intact
-    shards = {d: _shard(archive.read_journal(d)) for d in days}
+    shards = {d: _shard(archive.read_journal(d), archive.journal_path(d)) for d in days}
     out.mkdir(parents=True, exist_ok=True)
     for f in out.iterdir():   # empty the folder (old files from earlier versions must not linger)
         shutil.rmtree(f) if f.is_dir() else f.unlink()
@@ -50,11 +51,31 @@ def build(archive):
     return data
 
 
-def _shard(j):
-    """One night, as it was known then: what the Time Machine replays."""
+def readings_text(cols, z):
+    """Canonical text of a night's signal readings (z-scores, 6 decimals). The browser rebuilds the same text
+    from the shard and checks its SHA-256 (the Verify button), then recomputes every decision from it."""
+    return "".join(f"{t}|" + ",".join(f"{v:.6f}" for v in z[t]) + "\n" for t in sorted(z)) + "cols|" + ",".join(cols) + "\n"
+
+
+def _readings(j):
+    cols = list(config.PRICE_SIGNALS)
+    sig = j.get("signals") or {}
+    z = {t: [round(float(r["z"].get(c, 0.0) or 0.0), 6) for c in cols] for t, r in sig.items()}
+    raw = {t: [None if r.get("raw", {}).get(c) is None else round(float(r["raw"][c]), 6) for c in cols] for t, r in sig.items()}
+    return cols, z, raw
+
+
+def _shard(j, path=None):
+    """One night, as it was known then: what the Time Machine replays, plus the readings behind every
+    decision taken that night (for the Why? waterfall and Verify)."""
     st = j["state"]["participants"]
+    cols, z, raw = _readings(j)
+    text = readings_text(cols, z)
     return {
         "date": j["date"], "version": j.get("version"), "inputs": j.get("inputs"),
+        "journalSha256": hashlib.sha256(path.read_bytes()).hexdigest() if path is not None and path.exists() else None,
+        "sig": {"cols": cols, "z": z, "raw": raw, "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()},
+        "delisted": sorted((j["state"].get("delisted") or {}).keys()),
         "market": j.get("market"), "excluded": (j.get("checks") or {}).get("excluded", []),
         "values": {_slug(n): round(v, 2) for n, v in j["values"].items()},
         "cash": {_slug(n): round(p["cash"], 2) for n, p in st.items()},
@@ -82,20 +103,27 @@ def build_data(archive, days):
             "capital": config.CAPITAL, "rules": config.RULES_VERSION, "engine": config.ENGINE_VERSION}
     species = {sp_key[e]: {"label": v.get("prefix") or e, "family": e, "about": SPECIES_ABOUT.get(sp_key[e], v.get("description", ""))}
                for e, v in sp_all.items()}
+    meta["signals"] = {k: SIGNAL_LABEL.get(k, k) for k in config.SIGNALS}
+    meta["evidence"] = _evidence(archive)
     if not days:
-        return {"meta": {**meta, "updated": None, "dates": []}, "species": species, "p": [], "band": [], "day": None}
+        return {"meta": {**meta, "updated": None, "dates": [], "marks": []}, "species": species, "p": [], "band": [], "day": None}
 
-    series, logs = {}, {}
+    series, logs, fills_by_day, rule_days = {}, {}, {}, []
     last = prev = None
     for d in days:
         j = archive.read_journal(d)
         prev, last = last, j
+        dd = prev["date"] if prev else None    # the night the order was decided (filled at today's open)
+        if j.get("rule_changes"):
+            rule_days.append(d)
         for name, dec in j["decisions"].items():
             lg = logs.setdefault(name, [])
+            if dec["fills"]:
+                fills_by_day.setdefault(d, []).append(_slug(name))
             for f in dec["fills"]:
-                lg.append({"d": d, "k": f["side"], "t": f["ticker"], "eur": f["eur"], "px": f["price_usd"], "n": f["shares"],
+                lg.append({"d": d, "dd": dd, "k": f["side"], "t": f["ticker"], "eur": f["eur"], "px": f["price_usd"], "n": f["shares"],
                            "fee": round(f["fx_cost_eur"] + f["slippage_cost_eur"], 2),
-                           "gain": f.get("gain_eur"), "why": (f.get("reason") or {}).get("text", "")})
+                           "gain": f.get("gain_eur"), "why": (f.get("reason") or {}).get("text", ""), "r": _reason(f.get("reason"))})
             for ev in dec["events"]:
                 lg.append({"d": d, "k": ev["type"], "t": ev["ticker"], "eur": ev.get("eur"), "ratio": ev.get("ratio")})
             for c in dec["cancelled"]:
@@ -126,7 +154,7 @@ def build_data(archive, days):
         dna_in = p.get("dna") or {}
         dna = None
         if kind == "agent" and dna_in:
-            dna = {"w": {SIGNAL_LABEL.get(k, k): v for k, v in dna_in.get("weights", {}).items()},
+            dna = {"w": dict(dna_in.get("weights", {})), "minHold": dna_in.get("min_hold_days"), "band": dna_in.get("rank_band"),
                    "picks": dna_in.get("n_holdings"), "maxW": dna_in.get("max_weight"), "review": dna_in.get("review_days"),
                    "stop": dna_in.get("stop_loss"), "brake": dna_in.get("brake")}
         badge = label(ind, monkey_scores) if kind == "agent" else None
@@ -141,8 +169,8 @@ def build_data(archive, days):
             "tax": ind["estimated_tax"], "cash": round(p["cash"], 2), "days": ind["days"],
             "s": [round(v, 2) for _, v in series[name]], "from": series[name][0][0],
             "dna": dna, "hold": hold,
-            "next": [{"k": o["side"], "t": o["ticker"], "eur": o.get("eur"), "all": o.get("all"),
-                      "why": (o.get("reason") or {}).get("text", "")} for o in p["pending"]],
+            "next": [{"k": o["side"], "t": o["ticker"], "eur": o.get("eur"), "all": o.get("all"), "dd": today,
+                      "why": (o.get("reason") or {}).get("text", ""), "r": _reason(o.get("reason"))} for o in p["pending"]],
             "log": list(reversed(logs.get(name, [])))[:LOG_MAX],
         })
 
@@ -159,8 +187,40 @@ def build_data(archive, days):
            "orders": sum(len(p["pending"]) for p in state["participants"].values()),
            "excluded": len(last["checks"]["excluded"])}
     luck = _luck(archive, days, out)
-    return {"meta": {**meta, "updated": today, "dates": days}, "species": species, "p": out, "band": band,
-            "luck": luck, "day": day}
+    marks = [{"d": d, "k": "rules", "label": "Rule change"} for d in rule_days]
+    idx_s = [v for _, v in index_series]
+    moves = sorted(((idx_s[i] / idx_s[i - 1] - 1, days[i]) for i in range(1, len(idx_s)) if idx_s[i - 1]), key=lambda x: -abs(x[0]))[:3]
+    marks += [{"d": d, "k": "market", "label": f"S&P 500 {'+' if m > 0 else ''}{m * 100:.1f}%"} for m, d in moves if abs(m) >= 0.015]
+    first = min(fills_by_day) if fills_by_day else None
+    if first:
+        marks.append({"d": first, "k": "start", "label": "First trades"})
+    return {"meta": {**meta, "updated": today, "dates": days, "marks": sorted(marks, key=lambda m: m["d"])},
+            "species": species, "p": out, "band": band, "luck": luck, "day": day, "fillsByDay": fills_by_day}
+
+
+def _reason(r):
+    """Structured reason of an order: cause, score, rank and the main drivers (for the Why? waterfall)."""
+    if not r:
+        return None
+    out = {k: r.get(k) for k in ("cause", "score", "rank", "of", "seed") if r.get(k) is not None}
+    if r.get("drivers"):
+        out["drivers"] = [{"s": d["signal"], "z": d.get("z"), "w": d.get("weight"), "term": d.get("term"), "raw": d.get("raw")}
+                          for d in r["drivers"]]
+    return out
+
+
+def _evidence(archive):
+    """Evidence status of each signal from the Signal Lab (lab/report.json), if present."""
+    f = archive.root / "lab" / "report.json"
+    try:
+        sig = json.loads(f.read_text(encoding="utf-8")).get("signals", {}) if f.exists() else {}
+    except (ValueError, OSError):
+        return {}
+    out = {}
+    for k, v in sig.items():
+        name = k.split(".", 1)[-1]
+        out[name] = {"status": v.get("status"), "obs": v.get("observations"), "ic": v.get("mean_ic"), "t": v.get("nw_t")}
+    return out
 
 
 def _luck(archive, days, out):

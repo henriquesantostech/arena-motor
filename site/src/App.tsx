@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { buildModel, loadArena, type Arena, type Model } from "./data";
 import { detectTier, hasWebGL2, savedTier, saveTier, type Tier } from "./quality";
-import { Board, Help, Kpis, Legend, Podium, Tip, Top, type TipState } from "./hud";
+import { Board, Help, Kpis, Legend, Palette, Podium, TimeMachine, Tip, Top, type Lens, type TipState } from "./hud";
+import { Today } from "./Today";
 import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
 
@@ -30,10 +31,14 @@ function Ready({ A }: { A: Arena }) {
   const gl = useMemo(hasWebGL2, []);
   const [tier, setTierState] = useState<Tier>(() => (gl ? savedTier() || detectTier() : "lite"));
   const setTier = useCallback((t: Tier) => { setTierState(t); saveTier(t); }, []);
+  const [lens, setLens] = useState<Lens>("arena");
+  const [i, setI] = useState(M.last);
+  const [playing, setPlaying] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [tip, setTip] = useState<TipState>(null);
   const [help, setHelp] = useState(false);
+  const [palette, setPalette] = useState(false);
   const [board, setBoard] = useState(false);
 
   useEffect(() => { performance.mark("arena:ui"); report(); }, []);
@@ -44,7 +49,7 @@ function Ready({ A }: { A: Arena }) {
     route(); addEventListener("hashchange", route); return () => removeEventListener("hashchange", route);
   }, [M]);
   const show = useCallback((id: string | null) => {
-    setTip(null); setBoard(false);
+    setTip(null); setBoard(false); setPlaying(false);
     history.replaceState(null, "", id ? "#/" + id : location.pathname + location.search);
     setOpen(id);
   }, []);
@@ -52,9 +57,18 @@ function Ready({ A }: { A: Arena }) {
     setHover(id); setTip(id && x != null && y != null ? { id, x, y } : null);
   }, []);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape") { if (open) show(null); else setHelp(false); } };
+    const k = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette(p => !p); return; }
+      if (e.key === "Escape") { if (palette) setPalette(false); else if (open) show(null); else setHelp(false); return; }
+      const typing = (e.target as HTMLElement)?.tagName === "INPUT";
+      if (!open && !palette && !typing && lens === "arena") {
+        if (e.key === "ArrowLeft") { setPlaying(false); setI(n => Math.max(0, n - 1)); }
+        if (e.key === "ArrowRight") { setPlaying(false); setI(n => Math.min(M.last, n + 1)); }
+        if (e.key === " ") { e.preventDefault(); setPlaying(p => !p); }
+      }
+    };
     addEventListener("keydown", k); return () => removeEventListener("keydown", k);
-  }, [open, show]);
+  }, [open, palette, show, lens, M.last]);
 
   // the 2D view is the static first frame; it fades out once the 3D world has drawn
   const [worldUp, setWorldUp] = useState(false);
@@ -64,27 +78,33 @@ function Ready({ A }: { A: Arena }) {
     performance.mark("arena:" + what); report();
   }, []);
   useEffect(() => { if (tier === "lite") setWorldUp(false); }, [tier]);
+  const at = lens === "today" ? M.last : i;
+  const setDay = useCallback((n: number) => { setPlaying(false); setI(n); }, []);
 
   return (
     <>
-      <div id="stage" aria-hidden="true">
-        {(tier === "lite" || !worldUp) && <div className={tier === "lite" ? "" : "poster"}><Flat M={M} onPick={show} onHover={onHover} onReady={onReady} /></div>}
-        {tier !== "lite" && <Suspense fallback={null}><World M={M} tier={tier} paused={!!open || help} hover={hover} onPick={show} onHover={onHover} onReady={onReady} onDegrade={() => setTierState(t => t === "ultra" ? "high" : t)} /></Suspense>}
+      <div id="stage" aria-hidden="true" className={lens === "today" ? "dim" : ""}>
+        {(tier === "lite" || !worldUp) && <div className={tier === "lite" ? "" : "poster"}><Flat M={M} i={at} onPick={show} onHover={onHover} onReady={onReady} /></div>}
+        {tier !== "lite" && <Suspense fallback={null}><World M={M} i={at} tier={tier} paused={!!open || help || palette} hover={hover} onPick={show} onHover={onHover} onReady={onReady} onDegrade={() => setTierState(t => t === "ultra" ? "high" : t)} /></Suspense>}
         <div className="vignette" />
       </div>
       <div className="grain" />
-      <main className="hud">
-        <Top M={M} tier={tier} setTier={setTier} gl={gl} onHelp={() => setHelp(true)} />
-        <Kpis M={M} onPick={show} />
-        <Board M={M} open={board} hover={hover} onPick={show} onHover={id => setHover(id)} />
-        <Podium M={M} onPick={show} />
-        <Legend M={M} />
-        <button className="rankbtn" onClick={() => setBoard(b => !b)}>Ranking</button>
+      <main className={"hud lens-" + lens}>
+        <Top M={M} i={at} tier={tier} setTier={setTier} gl={gl} lens={lens} setLens={setLens} onHelp={() => setHelp(true)} onPalette={() => setPalette(true)} />
+        {lens === "today" ? <Today M={M} onPick={show} setLens={setLens} /> : <>
+          <Kpis M={M} i={i} onPick={show} />
+          <Board M={M} i={i} open={board} hover={hover} onPick={show} onHover={id => setHover(id)} />
+          <Podium M={M} i={i} onPick={show} />
+          <TimeMachine M={M} i={i} setI={setI} playing={playing} setPlaying={setPlaying} />
+          <Legend M={M} />
+          <button className="rankbtn" onClick={() => setBoard(b => !b)}>Ranking</button>
+        </>}
         <footer className="fine">Simulated money · Not investment advice</footer>
       </main>
-      <Tip M={M} tip={tip} />
-      {open && M.byId[open] && <AgentCard M={M} p={M.byId[open]} onClose={() => show(null)} onGo={show} />}
+      <Tip M={M} i={at} tip={tip} />
+      {open && M.byId[open] && <AgentCard M={M} p={M.byId[open]} at={at} onClose={() => show(null)} onGo={show} />}
       {help && <Help M={M} onClose={() => setHelp(false)} />}
+      {palette && <Palette M={M} onClose={() => setPalette(false)} onPick={show} setI={setDay} setLens={setLens} />}
     </>
   );
 }
