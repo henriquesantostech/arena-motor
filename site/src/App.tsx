@@ -13,6 +13,7 @@ import { Flat } from "./scene/Flat";
 
 const World = lazy(() => import("./scene/World"));
 const Globe = lazy(() => import("./Globe"));
+const Network = lazy(() => import("./Network"));
 
 function report() {
   try {
@@ -117,6 +118,7 @@ function Ready({ A }: { A: Arena }) {
           : lens === "journal" ? <Journal M={M} i={i} setI={setDay} onPick={show} />
             : lens === "evolution" ? <Evolution M={M} onPick={show} />
               : lens === "world" ? <Suspense fallback={<div className="boot">World</div>}><Globe /></Suspense>
+              : lens === "network" ? <Suspense fallback={<div className="boot">Network</div>}><Network /></Suspense>
               : lens === "lab" ? <Lab M={M} onPick={show} />
                 : lens === "people" ? <People M={M} /> : <>
           <Kpis M={M} i={i} onPick={show} />

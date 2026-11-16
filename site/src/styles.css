@@ -407,3 +407,17 @@ button.jrow:hover { background: rgba(140, 190, 255, .06); border-radius: 6px }
 
 @media (max-width: 1600px) { .dock button { padding: 0 11px; letter-spacing: .1em; font-size: 11px } .chip.where { white-space: nowrap } }
 @media (max-width: 1250px) { .chip.where { display: none } }
+
+/* ---------- X5: NETWORK ---------- */
+.network { grid-column: 1 / -1; grid-row: 2 / 6; display: grid; grid-template-columns: 1.9fr 1fr; gap: var(--gap); min-height: 0 }
+.network > .glass { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; background: rgba(6, 11, 24, .76); animation: rise .4s var(--ease) both }
+.network header { display: flex; justify-content: space-between; align-items: center; gap: 10px }
+.gsearch { height: 30px; width: 260px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--edge); background: rgba(255, 255, 255, .04); color: var(--text); font: 12.5px var(--ui); outline: none }
+.gtypes { display: flex; flex-wrap: wrap; gap: 6px }
+.gtypes .chip { cursor: pointer; opacity: .45 } .gtypes .chip.on { opacity: 1; color: var(--text) }
+.gtime { display: flex; align-items: center; gap: 10px } .gtime input { flex: 1 }
+.gside { overflow: auto }
+.gsel { display: flex; align-items: center; gap: 8px; font-size: 15px }
+.glinks { display: flex; flex-direction: column; overflow: auto; min-height: 0 }
+.gside .jrow { grid-template-columns: minmax(0, 1.4fr) 1fr 54px }
+@media (max-width: 820px) { .network { grid-template-columns: 1fr; overflow: auto } .gsearch { width: 140px } }
