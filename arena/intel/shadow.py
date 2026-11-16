@@ -108,7 +108,13 @@ class Inputs:
         self.close = p.pivot_table(index="date", columns="ticker", values="close", aggfunc="last")
 
 
-def compute_day(inp, day, tickers, cut):
+# Rehearsal (days whose cutoff passed before we ran) may trust a document's publication date for readers that cannot
+# know later events (FinBERT, trained on 2019 data). The LLM and the brief model were trained on text from after most
+# of our history, so their rehearsal would leak the future: they get live rows only.
+REHEARSAL_READERS = {"finbert"}
+
+
+def compute_day(inp, day, tickers, cut, rehearsal=False):
     """Signals dated `day`, from information published by `cut` (see wkb.info_cutoff)."""
     out = {}
     # insiders: distinct buyers (90 days) - 0.1 x distinct discretionary sellers
@@ -164,7 +170,12 @@ def compute_day(inp, day, tickers, cut):
             if d:
                 out[sid] = {t: d[t] for t in tickers if t in d}
     # news sentiment (FinBERT, 3 days) and LLM impact (5 days)
-    rd = inp.readings[inp.readings["usable_at"] <= cut] if len(inp.readings) else inp.readings
+    rd = inp.readings
+    if len(rd):
+        if rehearsal:
+            rd = rd[rd["reader"].isin(REHEARSAL_READERS) & (rd["doc_published"] <= cut)]
+        else:
+            rd = rd[rd["usable_at"] <= cut]
     if len(rd):
         lo3 = decision_cutoff((date.fromisoformat(day) - timedelta(days=3)).isoformat())
         lo5 = decision_cutoff((date.fromisoformat(day) - timedelta(days=5)).isoformat())
@@ -211,10 +222,12 @@ def compute_all(store, archive_root=None, start=None):
         cut = info_cutoff(day, known)
         if day < first or cut > now:
             continue
-        rows = [r for r in compute_day(inp, day, tickers, cut) if (r["date"], r["signal_id"]) not in done]
+        live = now <= decision_cutoff(day)
+        rows = [r for r in compute_day(inp, day, tickers, cut, rehearsal=not live)
+                if (r["date"], r["signal_id"]) not in done]
         for r in rows:
             r["recorded_at"] = now
-        if now <= decision_cutoff(day):
+        if live:
             n_live += store.add("signals", rows)
         else:
             n_reh += store.add("signals_rehearsal", rows)

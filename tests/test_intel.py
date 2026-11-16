@@ -200,3 +200,21 @@ def test_brief_salvage_keeps_whole_sectors():
     assert out["partial"] and out["headline"] == "H"
     assert [(x["sector"], x["score"]) for x in out["sectors"]] == [(s0, -2)]
     assert _salvage('{"head')["partial"]
+
+
+def test_rehearsal_uses_only_readers_without_future_knowledge():
+    from arena.intel.shadow import compute_day
+    rd = pd.DataFrame([
+        {"reader": "finbert", "score": 0.5, "output": None, "entity_ids": '["co:AAPL"]',
+         "doc_published": "2026-01-05T15:00:00Z", "usable_at": "2026-11-16T00:00:00Z"},
+        {"reader": "llm", "score": None, "output": '{"companies": [{"ticker": "AAPL", "direction": 1, "magnitude": 2}]}',
+         "entity_ids": '["co:AAPL"]', "doc_published": "2026-01-05T15:00:00Z", "usable_at": "2026-11-16T00:00:00Z"}])
+    empty = pd.DataFrame(columns=["subject_id", "predicate", "object_id", "value", "valid_from", "published_at",
+                                  "recorded_at", "person_id", "ticker", "action", "note", "disclosed_at",
+                                  "entity_id", "obs_date"])
+    inp = SimpleNamespace(alerts=empty, facts=empty, views=empty, xbrl=empty, readings=rd, close=pd.DataFrame())
+    cut = "2026-01-07T04:59:59Z"
+    reh = {r["signal_id"] for r in compute_day(inp, "2026-01-06", ["AAPL"], cut, rehearsal=True)}
+    live = {r["signal_id"] for r in compute_day(inp, "2026-01-06", ["AAPL"], cut)}
+    assert reh == {"intel.news_sentiment_3d"}
+    assert live == set()   # recorded after the cutoff: not usable live

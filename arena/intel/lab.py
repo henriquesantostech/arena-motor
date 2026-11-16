@@ -87,6 +87,9 @@ def summarize(ics, horizon, expected_sign, gates):
     return res
 
 
+LIVE_ONLY = {"intel.llm_impact_5d", "intel.brief_sector_tailwind"}   # see shadow.REHEARSAL_READERS
+
+
 def report(store, archive_root=None):
     archive_root = archive_root or store.root.parent
     meta = json.loads((config.RULES_DIR / "signals_shadow.json").read_text(encoding="utf-8"))
@@ -108,6 +111,8 @@ def report(store, archive_root=None):
             part = s[s["live"] == (mode == "live")] if len(s) else s
             entry[mode] = summarize(ic_series(part, fwd_cache[h]) if len(part) else pd.Series(dtype=float),
                                     h, p["expected_sign"], gates)
+        if p["id"] in LIVE_ONLY:
+            entry["rehearsal"] = {"n_days": 0, "status": "live only: the model may know later events"}
         entry["companies_last_day"] = int(s[s["date"] == s["date"].max()]["ticker"].nunique()) if len(s) else 0
         out["signals"][p["id"]] = entry
     path = store.root / "lab" / "ic_provisional.json"
