@@ -341,7 +341,10 @@ def journal_pages(archive, days, data):
         arena_moves.sort(key=lambda x: -x["ret"])
         brief = _read_json(archive.root / "intel" / "brief" / d[:4] / f"{d}.json")
         world = None
-        if brief and isinstance(brief.get("brief"), dict) and "invalid_json" not in brief["brief"]:
+        if brief and isinstance(brief.get("brief"), dict) and (brief["brief"].get("partial") or "invalid_json" in brief["brief"]):
+            # cut-off brief: never show the raw text, only say it is incomplete today
+            world = {"incomplete": True, "as_of": brief.get("as_of"), "model": brief.get("model"), "items": [], "sectors": [], "watch": []}
+        elif brief and isinstance(brief.get("brief"), dict):
             b = brief["brief"]
             cite = lambda ids: [{"id": c, **({k2: docs[c].get(k2) for k2 in ("title", "url", "source", "published_at")} if c in docs else {})} for c in ids or []]
             world = {"as_of": brief.get("as_of"), "model": brief.get("model"), "headline": b.get("headline"),

@@ -130,6 +130,7 @@ function Companies({ P }: { P: Page }) {
 function World({ P }: { P: Page }) {
   const w = P.world;
   if (!w) return <div className="empty big-empty">The World Brief arrives with the intelligence layer (phase 2). Until then this tab stays empty rather than guessing.</div>;
+  if ((w as { incomplete?: boolean }).incomplete) return <div className="empty big-empty">Brief incomplete today: the World Brief was cut off, so it is not shown.</div>;
   const C = ({ cs }: { cs: Cite[] }) => <span className="cites">{cs.map(c => c.url ? <a key={c.id} href={c.url} target="_blank" rel="noreferrer noopener" title={c.title || c.id}>[{c.source || c.id.slice(0, 6)}]</a> : <span key={c.id} title={c.id}>[{c.id.slice(0, 8)}]</span>)}</span>;
   return (
     <div className="jgrid">

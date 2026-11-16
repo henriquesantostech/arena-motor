@@ -50,7 +50,7 @@ export function Lab({ M, onPick }: { M: Model; onPick: (id: string) => void }) {
                 <div className="lbl">{st}</div>
                 {cards.filter(c => stage(c.status) === st).map(c => (
                   <div key={c.id} className="sig" title={c.note || ""}>
-                    <div className="sig-h"><b>{c.name}</b><span className={"badge " + (c.kind === "rehearsal" ? "reh" : "")}>{c.kind === "rehearsal" ? "rehearsal" : "live"}</span></div>
+                    <div className="sig-h"><b>{c.name}</b><span className={"badge " + (c.kind === "rehearsal" ? "reh" : "")}>{c.kind === "rehearsal" ? "rehearsal (backfilled data)" : "live"}</span></div>
                     <div className="mute small">{c.family} · {nf(c.obs)} days</div>
                     <div className="tgauge" title={`Newey–West t ${nf(c.t, 2)} (needs > ${need})`}>
                       <i className="need" style={{ left: `${need / tMax * 50 + 50}%` }} />
