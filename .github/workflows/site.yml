@@ -5,7 +5,7 @@ name: site
 
 on:
   workflow_run:
-    workflows: [nightly]
+    workflows: [nightly, intel]   # after the engine's night and after the intelligence layer (05:30 UTC, ~80 min)
     types: [completed]
   push:   # a new version of the site goes live at once
     branches: [main]

@@ -53,7 +53,30 @@ def build(archive):
     for d, page in pages.items():
         (out / "data" / "journal" / f"{d}.json").write_text(_dump(page), encoding="utf-8", newline="\n")
     (out / "data" / "corpus.json").write_text(_dump(corpus(data, pages)), encoding="utf-8", newline="\n")
+    copy_intel(archive, out / "data")
     return data
+
+
+# Phase 2 intelligence exports (written by the "intel" workflow) and the Signal Lab reports, copied as they
+# are for the X5 lenses. Personal-use and non-commercial sources: only ever served behind the login.
+INTEL_FILES = {
+    "intel/site/world.json": "intel/world.json", "intel/site/graph.json": "intel/graph.json",
+    "intel/site/alerts.json": "intel/alerts.json", "intel/site/docs.json": "intel/docs.json",
+    "intel/lab/ic_provisional.json": "lab/ic_provisional.json", "intel/lab/mirror_book.json": "lab/mirror_book.json",
+    "lab/report.json": "lab/report.json",
+}
+
+
+def copy_intel(archive, data_dir):
+    present = {}
+    for src, dst in INTEL_FILES.items():
+        f = archive.root / src
+        if f.exists() and _read_json(f) is not None:   # only well-formed files
+            (data_dir / dst).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(f, data_dir / dst)
+            present[dst] = True
+    (data_dir / "intel").mkdir(parents=True, exist_ok=True)
+    (data_dir / "intel" / "index.json").write_text(_dump(present), encoding="utf-8", newline="\n")
 
 
 def readings_text(cols, z):
@@ -281,7 +304,7 @@ def journal_pages(archive, days, data):
     ret = close.pct_change(fill_method=None)
     by_id = {p["id"]: p for p in data["p"]}
     dates = data["meta"]["dates"]
-    docs = _read_json(archive.root / "intel" / "site" / "docs.json") or {}
+    docs = (_read_json(archive.root / "intel" / "site" / "docs.json") or {}).get("docs", {})
     alerts = (_read_json(archive.root / "intel" / "site" / "alerts.json") or {}).get("alerts", [])
     pages = {}
     for k, d in enumerate(days):
