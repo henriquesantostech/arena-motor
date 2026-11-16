@@ -12,6 +12,7 @@ import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
 
 const World = lazy(() => import("./scene/World"));
+const Globe = lazy(() => import("./Globe"));
 
 function report() {
   try {
@@ -115,6 +116,7 @@ function Ready({ A }: { A: Arena }) {
         <Guard k={lens}>{lens === "today" ? <Today M={M} onPick={show} setLens={setLens} />
           : lens === "journal" ? <Journal M={M} i={i} setI={setDay} onPick={show} />
             : lens === "evolution" ? <Evolution M={M} onPick={show} />
+              : lens === "world" ? <Suspense fallback={<div className="boot">World</div>}><Globe /></Suspense>
               : lens === "lab" ? <Lab M={M} onPick={show} />
                 : lens === "people" ? <People M={M} /> : <>
           <Kpis M={M} i={i} onPick={show} />

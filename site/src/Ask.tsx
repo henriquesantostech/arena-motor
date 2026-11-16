@@ -26,7 +26,7 @@ export function Ask({ M, i, onAction, onClose }: { M: Model; i: number; onAction
   useEffect(() => () => { recRef.current?.stop(); speechSynthesis?.cancel(); }, []);
 
   const valid = (a: Action) => a.type === "open" ? !!(a.id && M.byId[a.id]) : a.type === "date" ? !!(a.d && M.A.meta.dates.includes(a.d))
-    : a.type === "lens" ? ["today", "arena", "evolution", "journal", "lab", "people"].includes(a.lens || "") : a.type === "close";
+    : a.type === "lens" ? ["today", "arena", "evolution", "journal", "world", "lab", "people"].includes(a.lens || "") : a.type === "close";
   const say = (text: string) => {
     if (!speak || !("speechSynthesis" in window)) return;
     speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = lang; speechSynthesis.speak(u);
