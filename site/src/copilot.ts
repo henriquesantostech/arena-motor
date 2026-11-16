@@ -44,7 +44,13 @@ export async function search(q: string, asOf: string | null, k = 10): Promise<Pa
     }
     if (s > 0) scored.push([s, i]);
   });
-  return scored.sort((a, b) => b[0] - a[0]).slice(0, k).map(([, i]) => I.docs[i]);
+  const top = scored.sort((a, b) => b[0] - a[0]).slice(0, k - 2).map(([, i]) => I.docs[i]);
+  // always give the model the rules of the game and the current standings (as of the selected day)
+  for (const id of ["standings", "about"]) {
+    const d = I.docs.find(x => x.id === id);
+    if (d && !top.includes(d) && !(asOf && d.d && d.d > asOf)) top.push(d);
+  }
+  return top;
 }
 
 // ---------- interface commands, understood without any AI ----------

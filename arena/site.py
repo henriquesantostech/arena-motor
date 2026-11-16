@@ -375,6 +375,23 @@ def corpus(data, pages):
         out.append({"id": f"species:{sp}", "d": meta.get("dayZero"), "k": "species", "title": f"Species {v['label']}",
                     "text": f"{v['label']} ({v['family']}): {v['about']}.", "ref": {"species": sp}})
     upd = meta.get("updated")
+    agents = [p for p in data["p"] if p["type"] == "agent"]
+    if agents:
+        moved = any(abs(p["ret"] or 0) > 1e-6 for p in agents)
+        ranked = sorted(agents, key=lambda p: -(p["score"] if p["score"] is not None else (p["vsIdx"] or 0)))
+        idx = next((p for p in data["p"] if p["type"] == "index"), None)
+        luck = data.get("luck") or {}
+        if moved:
+            txt = (f"Ranking, leader and podium as of {upd} (ranked by {'score' if all(p['score'] is not None for p in agents) else 'return versus the S&P 500'}): "
+                   + "; ".join(f"{k + 1}. {p['name']} return {_pct(p['ret'])}, versus index {_pct(p['vsIdx'])}" for k, p in enumerate(ranked[:5]))
+                   + f". Last: {ranked[-1]['name']} {_pct(ranked[-1]['vsIdx'])} versus index. S&P 500 since day zero {_pct(idx['ret'] if idx else None)}. "
+                   + f"Agents above the S&P 500: {sum(1 for p in agents if (p['vsIdx'] or 0) > 0)} of {len(agents)}."
+                   + (f" Agents above the luck band (better than 95% of {luck.get('n')} random monkeys): {sum(1 for p in agents if luck.get('p95') is not None and (p['ret'] or 0) > luck['p95'])}." if luck.get("p95") is not None else "")
+                   + " Badges: " + ("merit for " + ", ".join(p["name"] for p in agents if p.get("merit")) if any(p.get("merit") for p in agents) else "all provisional") + ".")
+        else:
+            txt = (f"Ranking, leader and podium as of {upd}: nobody leads yet. All {len(agents)} agents start at EUR {meta['capital']:,.0f}; "
+                   "the first trades happen at the next market open, so every agent is level with the S&P 500.")
+        out.append({"id": "standings", "d": upd, "k": "standings", "title": "Standings: ranking, leader, podium", "text": txt, "ref": {"lens": "arena"}})
     for p in data["p"]:
         name = p["name"]
         txt = (f"{name} ({p['type']}{', species ' + data['species'].get(p['sp'] or '', {}).get('label', '') if p['sp'] else ''}). "
