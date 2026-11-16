@@ -14,7 +14,9 @@ import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
 
 // Start downloading the 3D world at once, in parallel with the data (it used to wait for the data).
-const worldChunk = hasWebGL2() && savedTier() !== "lite" ? import("./scene/World") : null;
+// The 2D (Lite) view never probes WebGL: creating a GPU context is costly on machines without a GPU.
+const LITE = /[?&]tier=lite/.test(location.search) || savedTier() === "lite";
+const worldChunk = !LITE && hasWebGL2() ? import("./scene/World") : null;
 const World = lazy(() => worldChunk || import("./scene/World"));
 const Globe = lazy(() => import("./Globe"));
 const Network = lazy(() => import("./Network"));
@@ -48,8 +50,8 @@ export default function App() {
 
 function Ready({ A }: { A: Arena }) {
   const M: Model = useMemo(() => buildModel(A), [A]);
-  const gl = useMemo(hasWebGL2, []);
-  const [tier, setTierState] = useState<Tier>(() => (gl ? savedTier() || detectTier() : "lite"));
+  const gl = useMemo(() => (LITE ? true : hasWebGL2()), []);   // in Lite the 3D buttons stay offered; choosing one probes then
+  const [tier, setTierState] = useState<Tier>(() => { const q = new URLSearchParams(location.search).get("tier"); if (q === "lite" || !gl) return "lite"; if (q === "high" || q === "ultra") return q; return savedTier() || detectTier(); });
   const setTier = useCallback((t: Tier) => { setTierState(t); saveTier(t); }, []);
   const [lens, setLensState] = useState<Lens>("arena");
   const setLens = useCallback((l: Lens) => { setLensState(p => { if (p !== l) whoosh(); return l; }); }, []);
@@ -104,6 +106,7 @@ function Ready({ A }: { A: Arena }) {
     performance.mark("arena:" + what); report();
   }, []);
   useEffect(() => { if (tier === "lite") setWorldUp(false); }, [tier]);
+  useEffect(() => { document.body.classList.toggle("lite", tier === "lite"); }, [tier]);   // Lite = low-power: no grain, no blur
   const at = lens === "arena" || lens === "journal" ? i : M.last;
   const setDay = useCallback((n: number) => { setPlaying(false); setI(n); }, []);
   const onAction = useCallback((a: Action) => {

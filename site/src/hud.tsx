@@ -188,7 +188,8 @@ export function TimeMachine({ M, i, setI, playing, setPlaying }: { M: Model; i: 
         <input type="range" min={0} max={M.last} value={i} aria-label="Day" onChange={e => { setPlaying(false); setI(+e.target.value); }} />
         {marks.map(m => {
           const k = M.A.meta.dates.indexOf(m.d); if (k < 0) return null;
-          return <button key={m.d + m.k} className={"mark-t " + m.k} style={{ left: `${k / M.last * 100}%` }} title={`${day(m.d)} · ${m.label}`} onClick={() => { setPlaying(false); setI(k); }} />;
+          // pointer shortcut only (keyboard: the same days are in ⌘K search and the arrow keys)
+          return <span key={m.d + m.k} aria-hidden="true" className={"mark-t " + m.k} style={{ left: `${k / M.last * 100}%` }} title={`${day(m.d)} · ${m.label}`} onClick={() => { setPlaying(false); setI(k); }} />;
         })}
         <div className="ends num"><span>{day(M.A.meta.dates[0])}</span><span>{day(M.A.meta.dates[M.last])}</span></div>
       </div>
