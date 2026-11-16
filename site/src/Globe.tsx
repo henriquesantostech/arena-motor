@@ -7,7 +7,7 @@ import land110 from "world-atlas/land-110m.json";
 import { COLOR, day, nf } from "./data";
 import { useData } from "./Intel";
 
-type Country = { name: string; lat: number; lon: number; events: number; conflict_share: number; goldstein: number; tone: number; day: string; head_of_state?: string[]; head_of_government?: string[] };
+type Country = { name: string; lat: number; lon: number; events: number; conflict_share: number; goldstein: number; tone: number; day: string; head_of_state?: string[]; head_of_government?: string[]; companies?: { ticker: string; count: number }[] };
 type V = { value: number; day: string };
 type World = { as_of: string; countries: Record<string, Country>; rates: Record<string, V>; fx_per_eur: Record<string, V>; risk: Record<string, V>; events: { doc_id: string; title: string; day: string; topic: string }[] };
 type Docs = { docs: Record<string, { title?: string; url?: string; source?: string }> };
@@ -114,6 +114,8 @@ export default function Globe() {
             <div className="row3 small"><div><div className="lbl">Events</div><div className="num">{nf(C.events)}</div></div>
               <div title="Share of events that are material conflict"><div className="lbl">Conflict</div><div className={"num " + (C.conflict_share > .15 ? "down" : "")}>{nf(C.conflict_share * 100, 1)}%</div></div>
               <div title="Average Goldstein scale, −10 (conflict) to +10 (cooperation)"><div className="lbl">Goldstein</div><div className={"num " + (C.goldstein < 0 ? "down" : "up")}>{nf(C.goldstein, 2)}</div></div></div>
+            {C.companies?.length ? <div className="small" title="Company and country cited in the same documents over the last 30 days (at least twice). News mentions, not revenue exposure.">
+              <span className="mute">In the news with: </span>{C.companies.map(c => <b key={c.ticker} className="num" style={{ marginRight: 8 }}>{c.ticker}<span className="faint"> ×{c.count}</span></b>)}</div> : null}
             {(C.head_of_state?.length || C.head_of_government?.length) ? <div className="small mute">Head of state: {C.head_of_state?.join(", ") || "—"} · Government: {C.head_of_government?.join(", ") || "—"}</div> : null}
           </div>}
         </div>

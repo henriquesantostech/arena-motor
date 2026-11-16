@@ -16,7 +16,7 @@ const TYPE_COLOR: Record<string, string> = {
 };
 const KIND_COLOR: Record<string, string> = {
   in_sector: "rgba(255,211,77,.25)", ceo: "rgba(176,124,255,.5)", chairperson: "rgba(176,124,255,.5)", head_of_state: "rgba(47,224,168,.45)", head_of_government: "rgba(47,224,168,.45)",
-  insider_buy: "rgba(62,224,143,.55)", insider_sell: "rgba(255,107,107,.45)", congress_buy: "rgba(62,224,143,.55)", congress_sell: "rgba(255,107,107,.45)",
+  mentioned_with: "rgba(56,198,255,.4)", insider_buy: "rgba(62,224,143,.55)", insider_sell: "rgba(255,107,107,.45)", congress_buy: "rgba(62,224,143,.55)", congress_sell: "rgba(255,107,107,.45)",
 };
 const TYPES = ["company", "sector", "person", "insider", "member_of_congress", "country"] as const;
 const TYPE_LABEL: Record<string, string> = { company: "Companies", sector: "Sectors", person: "Executives", insider: "Insiders", member_of_congress: "Congress", country: "Countries", institution: "Institutions" };
@@ -116,7 +116,7 @@ export default function Network() {
       <div className="gside glass">
         {!S ? <>
           <div className="lbl">How to read</div>
-          <div className="evo-note">Each dot is a company, sector, executive, insider, member of Congress or country. Lines: sector membership, CEO and chair roles, heads of state and government, and insider or Congress trades over the last {G?.window_days ?? 180} days (green buy, red sell). Tap a dot to light up its links; drag to move, scroll to zoom. Slide the time bar to see the network as it was known on a day.</div>
+          <div className="evo-note">Each dot is a company, sector, executive, insider, member of Congress or country. Lines: sector membership, CEO and chair roles, heads of state and government, companies in the news with a country (news mentions, not revenue exposure), and insider or Congress trades over the last {G?.window_days ?? 180} days (green buy, red sell). Tap a dot to light up its links; drag to move, scroll to zoom. Slide the time bar to see the network as it was known on a day.</div>
           <div className="lbl">Busiest nodes</div>
           {nodes.slice().sort((a, b) => b.deg - a.deg).slice(0, 12).map(n => <button key={n.id} className="jrow" onClick={() => setSel(n.id)}><span><span className="dot" style={{ background: TYPE_COLOR[n.type] }} /> {n.label}</span><span /><span className="num mute">{n.deg}</span></button>)}
         </> : <>
@@ -126,7 +126,7 @@ export default function Network() {
             const o = e.a === S.id ? e.t : e.s;
             return <button key={k} className="jrow" onClick={() => setSel(o.id)}>
               <span><span className="dot" style={{ background: TYPE_COLOR[o.type] }} /> {o.label}</span>
-              <span className="mute small" style={{ color: /buy/.test(e.kind) ? COLOR.up : /sell/.test(e.kind) ? COLOR.down : undefined }}>{e.kind.replace(/_/g, " ")}{e.count ? ` ×${e.count}` : ""}</span>
+              <span className="mute small" style={{ color: /buy/.test(e.kind) ? COLOR.up : /sell/.test(e.kind) ? COLOR.down : undefined }}>{e.kind === "mentioned_with" ? "in the news with" : e.kind.replace(/_/g, " ")}{e.count ? ` ×${e.count}` : ""}</span>
               <span className="num faint small">{e.since ? day(e.since) : ""}</span></button>;
           })}</div>
         </>}
