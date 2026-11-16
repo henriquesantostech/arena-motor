@@ -81,7 +81,7 @@ class Server:
         return js.get("content", ""), js.get("timings", {})
 
     def chat(self, system, user, schema=None, max_tokens=512):
-        """Chat template applied by the server (Qwen3.5); thinking disabled for short, deterministic outputs."""
+        """Chat template applied by the server (from the GGUF); thinking disabled for short, deterministic outputs."""
         body = {"messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                 "max_tokens": max_tokens, "temperature": self.flags["temperature"], "top_k": self.flags["top_k"],
                 "seed": self.flags["seed"], "chat_template_kwargs": {"enable_thinking": False}}

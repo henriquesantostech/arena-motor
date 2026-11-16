@@ -1,6 +1,6 @@
 {
- "version": "0.2",
- "date": "2026-11-14",
+ "version": "0.3",
+ "date": "2026-11-16",
  "note": "Pinned AI readers (design v2, section 9). Every model is identified by its file SHA-256; every reading stores reader, version and model hash. A model is swapped only after it passes the admission exam (rules/exam/) and fits the time budget. Training cutoffs are recorded: readings of documents dated before a model's cutoff never count as evidence (rigour charter rule 8).",
  "runtime": {
   "llama_cpp": {
@@ -8,7 +8,14 @@
    "asset": "llama-b12024-bin-ubuntu-x64.tar.gz",
    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12024/llama-b12024-bin-ubuntu-x64.tar.gz",
    "sha256": "96d305fe3b8fe3aabf08d711d6121229f03c07639502ef4283809de78a0a03f2",
-   "flags": {"threads": 4, "batch": 512, "ctx": 8192, "seed": 42, "temperature": 0, "top_k": 1}
+   "flags": {
+    "threads": 4,
+    "batch": 512,
+    "ctx": 8192,
+    "seed": 42,
+    "temperature": 0,
+    "top_k": 1
+   }
   }
  },
  "readers": {
@@ -26,7 +33,15 @@
    "revision": "main",
    "license": "Apache 2.0",
    "training_cutoff": "2025-06-30",
-   "labels": ["company", "person", "country", "government agency", "product", "technology", "central bank"],
+   "labels": [
+    "company",
+    "person",
+    "country",
+    "government agency",
+    "product",
+    "technology",
+    "central bank"
+   ],
    "version": "1"
   },
   "embed": {
@@ -41,13 +56,14 @@
   },
   "llm": {
    "role": "structured reading of the triaged items (event type, companies affected, direction, magnitude, horizon)",
-   "model": "unsloth/Qwen3.5-4B-GGUF",
-   "file": "Qwen3.5-4B-Q4_K_M.gguf",
-   "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+   "model": "unsloth/gemma-4-E4B-it-GGUF",
+   "file": "gemma-4-E4B-it-Q4_K_M.gguf",
+   "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
    "license": "Apache 2.0",
-   "training_cutoff": "2026-03-02 (release date used as a conservative bound; the cutoff is not published)",
+   "training_cutoff": "2026-04-01 (release date used as a conservative bound; the cutoff is not published)",
    "max_items": 150,
-   "version": "1"
+   "version": "2",
+   "admitted": "exam v1, 2026-11-16: JSON 100%, event type 70.0%, direction 81.2%, ticker F1 0.897, 17.6 s/item"
   },
   "brief": {
    "role": "Daily World Brief and sector headwind/tailwind scores, from knowledge-base facts and retrieved documents dated <= T",
@@ -60,17 +76,6 @@
   }
  },
  "candidates": {
-  "llm-gemma4-e4b": {
-   "reader": "llm",
-   "role": "candidate for the structured reading (exam only until admitted)",
-   "model": "unsloth/gemma-4-E4B-it-GGUF",
-   "file": "gemma-4-E4B-it-Q4_K_M.gguf",
-   "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
-   "license": "Apache 2.0",
-   "training_cutoff": "2026-04-01 (release date used as a conservative bound; the cutoff is not published)",
-   "max_items": 150,
-   "version": "c1"
-  },
   "embed-qwen3-0.6b": {
    "reader": "embed",
    "role": "candidate for retrieval embeddings (exam only until admitted)",
@@ -82,7 +87,22 @@
    "dims": 256,
    "pooling": "last",
    "doc_prefix": "",
-   "version": "c1"
+   "version": "c1",
+   "exam": "exam v1, 2026-11-16: same-topic retrieval 35% (< 70%): not admitted"
+  }
+ },
+ "retired": {
+  "llm-qwen3.5-4b": {
+   "role": "structured reading of the triaged items (event type, companies affected, direction, magnitude, horizon)",
+   "model": "unsloth/Qwen3.5-4B-GGUF",
+   "file": "Qwen3.5-4B-Q4_K_M.gguf",
+   "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+   "license": "Apache 2.0",
+   "training_cutoff": "2026-03-02 (release date used as a conservative bound; the cutoff is not published)",
+   "max_items": 150,
+   "version": "1",
+   "reader": "llm",
+   "retired": "2026-11-16: failed exam v1 on event type (67.5% < 70%); replaced by Gemma 4 E4B"
   }
  }
 }
