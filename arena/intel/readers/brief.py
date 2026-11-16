@@ -19,7 +19,7 @@ SCHEMA = {   # property order = generation order: the short, structured parts co
     "type": "object",
     "properties": {
         "headline": {"type": "string", "maxLength": 160},
-        "sectors": {"type": "array", "maxItems": len(SECTORS), "items": {
+        "sectors": {"type": "array", "minItems": len(SECTORS), "maxItems": len(SECTORS), "items": {
             "type": "object", "properties": {
                 "sector": {"type": "string", "enum": SECTORS}, "score": {"type": "integer", "enum": [-2, -1, 0, 1, 2]},
                 "reason": {"type": "string", "maxLength": 160},
