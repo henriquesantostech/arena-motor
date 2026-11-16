@@ -3,6 +3,8 @@ import { buildModel, loadArena, type Arena, type Model } from "./data";
 import { detectTier, hasWebGL2, savedTier, saveTier, type Tier } from "./quality";
 import { Board, Help, Kpis, Legend, Palette, Podium, TimeMachine, Tip, Top, type Lens, type TipState } from "./hud";
 import { Today } from "./Today";
+import { Journal } from "./Journal";
+import { Evolution } from "./Evolution";
 import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
 
@@ -78,12 +80,12 @@ function Ready({ A }: { A: Arena }) {
     performance.mark("arena:" + what); report();
   }, []);
   useEffect(() => { if (tier === "lite") setWorldUp(false); }, [tier]);
-  const at = lens === "today" ? M.last : i;
+  const at = lens === "today" || lens === "evolution" ? M.last : i;
   const setDay = useCallback((n: number) => { setPlaying(false); setI(n); }, []);
 
   return (
     <>
-      <div id="stage" aria-hidden="true" className={lens === "today" ? "dim" : ""}>
+      <div id="stage" aria-hidden="true" className={lens === "arena" ? "" : lens === "today" ? "dim" : "dim deep"}>
         {(tier === "lite" || !worldUp) && <div className={tier === "lite" ? "" : "poster"}><Flat M={M} i={at} onPick={show} onHover={onHover} onReady={onReady} /></div>}
         {tier !== "lite" && <Suspense fallback={null}><World M={M} i={at} tier={tier} paused={!!open || help || palette} hover={hover} onPick={show} onHover={onHover} onReady={onReady} onDegrade={() => setTierState(t => t === "ultra" ? "high" : t)} /></Suspense>}
         <div className="vignette" />
@@ -91,7 +93,9 @@ function Ready({ A }: { A: Arena }) {
       <div className="grain" />
       <main className={"hud lens-" + lens}>
         <Top M={M} i={at} tier={tier} setTier={setTier} gl={gl} lens={lens} setLens={setLens} onHelp={() => setHelp(true)} onPalette={() => setPalette(true)} />
-        {lens === "today" ? <Today M={M} onPick={show} setLens={setLens} /> : <>
+        {lens === "today" ? <Today M={M} onPick={show} setLens={setLens} />
+          : lens === "journal" ? <Journal M={M} i={i} setI={setDay} onPick={show} />
+            : lens === "evolution" ? <Evolution M={M} onPick={show} /> : <>
           <Kpis M={M} i={i} onPick={show} />
           <Board M={M} i={i} open={board} hover={hover} onPick={show} onHover={id => setHover(id)} />
           <Podium M={M} i={i} onPick={show} />

@@ -23,6 +23,11 @@ def test_site_builds_with_everything(tmp_path):
     assert [s.stem for s in shards] == arch.journal_days()
     sh = json.loads(shards[-1].read_text(encoding="utf-8"))
     assert sh["date"] == shards[-1].stem and len(sh["values"]) == 32 and "inputs" in sh and "positions" in sh
+    pages = sorted((out / "data" / "journal").glob("*.json"))
+    assert [x.stem for x in pages] == arch.journal_days()
+    pg = json.loads(pages[-1].read_text(encoding="utf-8"))
+    assert {"front", "markets", "companies", "arena", "world", "people", "sources"} <= set(pg)
+    assert pg["sources"]["journal"]["sha256"] and pg["world"] is None
     d = _data(tmp_path / "a")
     kinds = [p["type"] for p in d["p"]]
     assert kinds.count("agent") == 20 and kinds.count("monkey") == 10

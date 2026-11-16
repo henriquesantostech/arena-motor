@@ -3,7 +3,7 @@ import { COLOR, colorOf, day, dayY, label, nf, pct, SPECIES_COLOR, tone, type Mo
 import type { Tier } from "./quality";
 
 export type TipState = { id: string; x: number; y: number } | null;
-export type Lens = "today" | "arena";
+export type Lens = "today" | "arena" | "evolution" | "journal";
 
 export function Shape({ p }: { p: Participant }) {
   const c = colorOf(p);
@@ -26,7 +26,7 @@ export function Top({ M, i, tier, setTier, gl, lens, setLens, onHelp, onPalette 
         </span>
       </div>
       <nav className="dock" aria-label="Lenses">
-        {(["today", "arena"] as Lens[]).map(l => <button key={l} aria-pressed={lens === l} onClick={() => setLens(l)}>{l.toUpperCase()}</button>)}
+        {(["today", "arena", "evolution", "journal"] as Lens[]).map(l => <button key={l} aria-pressed={lens === l} onClick={() => setLens(l)}>{l.toUpperCase()}</button>)}
       </nav>
       <div className="tools">
         <button className="chip kbd" onClick={onPalette} title="Search agents, days and lenses">⌘K</button>
@@ -222,6 +222,8 @@ export function Palette({ M, onClose, onPick, setI, setLens }: { M: Model; onClo
     const all: { k: string; label: string; sub: string; run: () => void }[] = [
       { k: "lens", label: "Today", sub: "lens", run: () => setLens("today") },
       { k: "lens", label: "Arena", sub: "lens", run: () => setLens("arena") },
+      { k: "lens", label: "Evolution", sub: "lens", run: () => setLens("evolution") },
+      { k: "lens", label: "Journal", sub: "lens", run: () => setLens("journal") },
       { k: "day", label: "Live (latest night)", sub: day(M.A.meta.dates[M.last]), run: () => { setLens("arena"); setI(M.last); } },
       ...M.order.map(p => ({ k: "p", label: label(p), sub: p.type === "agent" ? M.A.species[p.sp || ""]?.label || "" : p.type, run: () => onPick(p.id) })),
       ...(M.A.meta.marks || []).map(m => ({ k: "day", label: m.label, sub: day(m.d), run: () => { setLens("arena"); setI(M.A.meta.dates.indexOf(m.d)); } })),

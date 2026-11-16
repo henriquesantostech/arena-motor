@@ -327,13 +327,13 @@ def journal_pages(archive, days, data):
         people = [a for a in alerts if str(a.get("disclosed_at", ""))[:10] == d]
         front = []
         if spx is not None:
-            front.append({"k": "market", "title": f"S&P 500 {'up' if spx >= 0 else 'down'} {abs(spx) * 100:.1f}% (USD)", "v": spx, "src": "prices"})
+            front.append({"k": "market", "title": f"S&P 500 {'rises' if spx >= 0 else 'falls'} (USD)", "v": spx, "src": "prices"})
         if movers:
             top = max(movers, key=lambda x: abs(x["ret"]))
-            front.append({"k": "company", "title": f"{top['name']} {'+' if top['ret'] >= 0 else '−'}{abs(top['ret']) * 100:.1f}%", "t": top["t"], "v": top["ret"], "src": "prices"})
+            front.append({"k": "company", "title": top['name'], "t": top["t"], "v": top["ret"], "src": "prices"})
         if arena_moves:
             top = max(arena_moves, key=lambda x: abs(x["ret"]))
-            front.append({"k": "arena", "title": f"{top['name']} {'+' if top['ret'] >= 0 else '−'}{abs(top['ret']) * 100:.1f}% on the day", "id": top["id"], "v": top["ret"], "src": "journal"})
+            front.append({"k": "arena", "title": f"{top['name']}, biggest agent move", "id": top["id"], "v": top["ret"], "src": "journal"})
         if world and world.get("headline"):
             front.insert(0, {"k": "world", "title": world["headline"], "src": "brief"})
         if people:
