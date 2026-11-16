@@ -8,6 +8,7 @@
   merge      merges shard outputs into the readings table
   brief      writes the Daily World Brief (9B model)
   people     politicians and insiders: alerts and the Mirror shadow book
+  site       small JSON files for the private site (docs, world, graph)
   signals    computes all shadow signals for the missing days
   lab        provisional Signal Lab report (rank IC per shadow signal)
   exam       model admission exam (--reader ...)
@@ -27,7 +28,7 @@ from .store import Store, utcnow
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="arena.intel", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["sources", "ingest", "backfill", "triage", "read", "merge", "brief", "people",
+    ap.add_argument("command", choices=["sources", "ingest", "backfill", "triage", "read", "merge", "brief", "people", "site",
                                         "signals", "lab", "exam", "status"])
     ap.add_argument("--archive")
     ap.add_argument("--only", help="comma-separated source ids")
@@ -95,6 +96,9 @@ def dispatch(a, store):
     if a.command == "people":
         from .people import run as people_run
         return people_run(store)
+    if a.command == "site":
+        from .site_export import run as site_run
+        return site_run(store)
     if a.command == "signals":
         from .shadow import compute_all
         return compute_all(store)

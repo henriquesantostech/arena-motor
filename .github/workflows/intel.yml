@@ -212,6 +212,9 @@ jobs:
         run: python -m arena.intel brief --archive arquivo --models models
       - name: Politicians and insiders (alerts, Mirror shadow book)
         run: python -m arena.intel people --archive arquivo
+      - name: Site data (docs, world, graph)
+        continue-on-error: true
+        run: python -m arena.intel site --archive arquivo
       - name: Shadow signals
         run: python -m arena.intel signals --archive arquivo
       - name: Signal Lab (provisional IC)
