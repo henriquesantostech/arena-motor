@@ -34,6 +34,19 @@ def _agents():
     return [p for p in config.POPULATION["participants"] if p["type"] == "agent"]
 
 
+def seats(journal):
+    """Seat (0..19) -> the agent occupying it that night. Founders sit in population order; a newborn takes
+    the seat of the agent it replaced (rules/evolution.json, identity.slot). Offline monkeys mirror seats."""
+    founders = {a["name"]: i for i, a in enumerate(_agents())}
+    out = {}
+    for name, p in journal["state"]["participants"].items():
+        if p["type"] == "agent":
+            slot = p.get("slot", founders.get(name))
+            if slot is not None:
+                out[slot] = name
+    return dict(sorted(out.items()))
+
+
 def _value(m, closes, last, rate):
     total = m["cash"]
     for t, p in m["positions"].items():
@@ -79,15 +92,15 @@ def simulate(archive, n=N_MONKEYS):
         excluded = set(j["checks"]["excluded"]) | set(j["state"]["delisted"])
         eligible = sorted(t for t in j["signals"] if t not in excluded)
         plan = {}
-        for a in agents:
-            pa = j["state"]["participants"][a["name"]]
-            av = j["values"][a["name"]]
+        for slot, name in seats(j).items():
+            pa = j["state"]["participants"][name]
+            av = j["values"][name]
             exits = sum(1 for o in pa["pending"] if o["side"] == "sell" and o.get("all"))
             entries = [o["eur"] / av for o in pa["pending"]
                        if o["side"] == "buy" and o.get("reason", {}).get("cause") == "entry" and av]
-            plan[a["name"]] = (exits, entries)
+            plan[slot] = (exits, entries)
         for i, m in enumerate(monkeys):
-            exits, entries = plan[m["copies_management_of"]]
+            exits, entries = plan.get(i % len(agents), (0, []))
             if not exits and not entries:
                 continue
             rng = _rng(i, d)
@@ -134,14 +147,18 @@ def _summary(archive, df):
     j = archive.read_journal(d)
     first = archive.read_journal(df.index[0])
     agents = {}
-    for a in _agents():
-        name = a["name"]
-        r = j["values"][name] / first["values"][name] - 1
-        own = [c for i, c in enumerate(df.columns) if i % len(_agents()) == _agents().index(a)]
+    n_seats = len(_agents())
+    for slot, name in seats(j).items():
+        born = j["state"]["participants"][name]["born"]
+        start = born if born in df.index and born > df.index[0] else df.index[0]
+        base = first if start == df.index[0] else archive.read_journal(start)
+        r = j["values"][name] / base["values"][name] - 1
+        window = rets if start == df.index[0] else df.iloc[-1] / df.loc[start] - 1
+        own = [c for i, c in enumerate(df.columns) if i % n_seats == slot]
         agents[name] = {
             "return": round(r, 6),
-            "percentile_vs_all_monkeys": round(float((rets < r).mean()), 4),
-            "percentile_vs_mirroring_monkeys": round(float((rets[own] < r).mean()), 4),
+            "percentile_vs_all_monkeys": round(float((window < r).mean()), 4),
+            "percentile_vs_mirroring_monkeys": round(float((window[own] < r).mean()), 4),
         }
     q = rets.quantile([0.05, 0.5, 0.95]).round(6)
     band = (df.div(df.iloc[0]) - 1).quantile([0.05, 0.95], axis=1).T.round(6)

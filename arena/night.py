@@ -15,6 +15,7 @@ from . import config, sources
 from .agents import decide
 from .archive import fingerprint
 from .checks import check
+from .evolution import apply as evolve
 from .market import apply_events, fill_pending, new_participant, sell, value
 from .signals import compute, market_ok
 from .view import View
@@ -185,6 +186,8 @@ def process_day(archive, day, prev_state, cutoff=None):
     state["missing_days"] = dict(sorted(state["missing_days"].items()))
 
     values = {n: value(p, view, day, rate) for n, p in state["participants"].items()}
+    # Evolution (rules 1.2): only on evaluation nights; on every other night nothing changes
+    evolution = evolve(archive, state, day, values, decisions, view) if prev_state is not None else None
 
     excluded, crosschecked = check(view, universe, state["delisted"])
     eligible = [t for t in universe if t not in state["delisted"] and t not in excluded]
@@ -212,6 +215,8 @@ def process_day(archive, day, prev_state, cutoff=None):
     }
     if rule_changes:   # only on the nights a rule change takes effect
         package["rule_changes"] = rule_changes
+    if evolution:   # only on evaluation nights
+        package["evolution"] = evolution
     return package
 
 
