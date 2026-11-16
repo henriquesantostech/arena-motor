@@ -14,31 +14,31 @@ from ..wkb import documents_as_of, facts_as_of, next_weekday, observations_as_of
 from .llama import Server, cfg
 
 SECTORS = sorted({c["sector"] for c in config.UNIVERSE["companies"]})
-SCHEMA = {
+SCHEMA = {   # property order = generation order: the short, structured parts come first so they are never cut
     "type": "object",
     "properties": {
-        "headline": {"type": "string", "maxLength": 200},
-        "world": {"type": "array", "maxItems": 8, "items": {
-            "type": "object", "properties": {
-                "topic": {"type": "string", "maxLength": 60}, "summary": {"type": "string", "maxLength": 400},
-                "citations": {"type": "array", "maxItems": 5, "items": {"type": "string"}}},
-            "required": ["topic", "summary", "citations"], "additionalProperties": False}},
-        "markets": {"type": "string", "maxLength": 500},
+        "headline": {"type": "string", "maxLength": 160},
         "sectors": {"type": "array", "maxItems": len(SECTORS), "items": {
             "type": "object", "properties": {
                 "sector": {"type": "string", "enum": SECTORS}, "score": {"type": "integer", "enum": [-2, -1, 0, 1, 2]},
-                "reason": {"type": "string", "maxLength": 240},
-                "citations": {"type": "array", "maxItems": 4, "items": {"type": "string"}}},
+                "reason": {"type": "string", "maxLength": 160},
+                "citations": {"type": "array", "maxItems": 3, "items": {"type": "string"}}},
             "required": ["sector", "score", "reason", "citations"], "additionalProperties": False}},
-        "watch": {"type": "array", "maxItems": 5, "items": {"type": "string", "maxLength": 160}},
+        "markets": {"type": "string", "maxLength": 400},
+        "world": {"type": "array", "maxItems": 6, "items": {
+            "type": "object", "properties": {
+                "topic": {"type": "string", "maxLength": 60}, "summary": {"type": "string", "maxLength": 300},
+                "citations": {"type": "array", "maxItems": 4, "items": {"type": "string"}}},
+            "required": ["topic", "summary", "citations"], "additionalProperties": False}},
+        "watch": {"type": "array", "maxItems": 4, "items": {"type": "string", "maxLength": 140}},
     },
-    "required": ["headline", "world", "markets", "sectors", "watch"], "additionalProperties": False,
+    "required": ["headline", "sectors", "markets", "world", "watch"], "additionalProperties": False,
 }
 SYSTEM = ("You write the Daily World Brief of a paper-money research arena. Use ONLY the facts and documents "
           "given, all dated on or before the brief date; never add outside knowledge or later events. Be neutral "
           "and factual, no investment advice. Every world item and sector score must cite document ids from the "
           "list (the [id] prefixes). Sector score: -2 strong headwind, 0 neutral or no evidence, +2 strong "
-          "tailwind, judged only from the evidence given. Write in English.")
+          "tailwind, judged only from the evidence given; give a score for every sector. Put document ids only in the \"citations\" lists, never inside the text. Write in English.")
 
 
 def _context(con, T):
@@ -69,7 +69,7 @@ def _context(con, T):
              "filing:8-K": 2, "news": 2}
     if len(docs):
         docs = docs.assign(o=docs["kind"].map(lambda k: order.get(k, 5))).sort_values(["o", "published_at", "doc_id"])
-        for d in docs.head(120).itertuples():
+        for d in docs.head(100).itertuples():
             text = summ.get(d.doc_id) or d.title or ""
             lines.append(f"[{d.doc_id}] {d.published_at[:16]} {d.kind}: {text[:220]}")
     return "\n".join(lines), set(docs["doc_id"]) if len(docs) else set()
@@ -85,7 +85,7 @@ def write_brief(store, models, T=None):
     con = store.connect()
     ctx, ids = _context(con, T)
     with Server(models or "models", rc["file"], port=8092, ctx=16384) as srv:
-        raw, timings = srv.chat(SYSTEM, f"Brief date (as of): {T}\n\n{ctx}", SCHEMA, max_tokens=1500)
+        raw, timings = srv.chat(SYSTEM, f"Brief date (as of): {T}\n\n{ctx}", SCHEMA, max_tokens=2400)
         runtime = srv.runtime
     try:
         out = json.loads(raw)
