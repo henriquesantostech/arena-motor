@@ -7,6 +7,7 @@ import { Journal } from "./Journal";
 import { Evolution } from "./Evolution";
 import { Lab, People } from "./Intel";
 import { Ask } from "./Ask";
+import { Tour, tourSeen } from "./Tour";
 import type { Action } from "./copilot";
 import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
@@ -59,6 +60,7 @@ function Ready({ A }: { A: Arena }) {
   const [palette, setPalette] = useState(false);
   const [board, setBoard] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [touring, setTouring] = useState(false);
 
   useEffect(() => { performance.mark("arena:ui"); report(); }, []);
 
@@ -94,7 +96,7 @@ function Ready({ A }: { A: Arena }) {
   const [worldUp, setWorldUp] = useState(false);
   const [drawn, setDrawn] = useState(false);
   const onReady = useCallback((what: "3d" | "2d") => {
-    if (what === "3d") { setDrawn(true); setTimeout(() => setWorldUp(true), 450); }   // the 2D first frame fades out (CSS) while the 3D fades in
+    if (what === "3d") { setDrawn(true); setTimeout(() => setWorldUp(true), 450); if (!tourSeen() && !location.hash) setTimeout(() => setTouring(true), 900); }   // the 2D first frame fades out (CSS) while the 3D fades in
     if (what === "2d" && performance.getEntriesByName("arena:2d").length) return;
     performance.mark("arena:" + what); report();
   }, []);
@@ -112,7 +114,7 @@ function Ready({ A }: { A: Arena }) {
     <>
       <div id="stage" aria-hidden="true" className={(lens === "arena" ? "" : lens === "today" ? "dim" : "dim deep") + (drawn ? " world-up" : "")}>
         {(tier === "lite" || !worldUp) && <div className={tier === "lite" ? "" : "poster"}><Flat M={M} i={at} onPick={show} onHover={onHover} onReady={onReady} /></div>}
-        {tier !== "lite" && <Suspense fallback={null}><World M={M} i={at} tier={tier} paused={!!open || help || palette} hover={hover} onPick={show} onHover={onHover} onReady={onReady} onDegrade={() => setTierState(t => t === "ultra" ? "high" : t)} /></Suspense>}
+        {tier !== "lite" && <Suspense fallback={null}><World M={M} i={at} tier={tier} tour={touring} paused={!!open || help || palette} hover={hover} onPick={show} onHover={onHover} onReady={onReady} onDegrade={() => setTierState(t => t === "ultra" ? "high" : t)} /></Suspense>}
         <div className="vignette" />
       </div>
       <div className="grain" />
@@ -136,7 +138,8 @@ function Ready({ A }: { A: Arena }) {
       </main>
       <Tip M={M} i={at} tip={tip} />
       {open && M.byId[open] && <AgentCard M={M} p={M.byId[open]} at={at} onClose={() => show(null)} onGo={show} />}
-      {help && <Help M={M} onClose={() => setHelp(false)} />}
+      {help && <Help M={M} onClose={() => setHelp(false)} onTour={() => { setHelp(false); setLens("arena"); setTouring(true); }} />}
+      {touring && lens === "arena" && <Tour onEnd={() => setTouring(false)} />}
       {asking && <Ask M={M} i={i} onAction={onAction} onClose={() => setAsking(false)} />}
       {palette && <Palette M={M} onClose={() => setPalette(false)} onPick={show} setI={setDay} setLens={setLens} />}
     </>

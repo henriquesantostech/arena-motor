@@ -16,7 +16,7 @@ const R_AGENTS = 6.2, R_MONKEYS = 3.1, H_MAX = 3.2, R_WORLD = 9.5;
 const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 type Props = {
-  M: Model; i: number; tier: Tier; paused: boolean; hover: string | null;
+  M: Model; i: number; tier: Tier; tour?: boolean; paused: boolean; hover: string | null;
   onPick: (id: string) => void; onHover: (id: string | null, x?: number, y?: number) => void;
   onReady: (w: "3d") => void; onDegrade: () => void;
 };
@@ -41,7 +41,7 @@ export default function World(props: Props) {
   );
 }
 
-function Scene({ M, i, tier, hover, onPick, onHover, onReady }: Props) {
+function Scene({ M, i, tier, tour, hover, onPick, onHover, onReady }: Props) {
   const { size, camera, scene } = useThree();
   const moved = useRef(false);
   const ready = useRef(false);
@@ -115,7 +115,7 @@ function Scene({ M, i, tier, hover, onPick, onHover, onReady }: Props) {
       ))}
       <SpeciesLabels M={M} />
       <OrbitControls makeDefault enablePan={false} enableDamping dampingFactor={0.08} minDistance={7} maxDistance={45}
-        minPolarAngle={0.35} maxPolarAngle={1.45} autoRotate={!reduce} autoRotateSpeed={0.35} target={[0, 0.4, 0]}
+        minPolarAngle={0.35} maxPolarAngle={1.45} autoRotate={!reduce} autoRotateSpeed={tour ? 3.2 : 0.35} target={[0, 0.4, 0]}
         onStart={(e) => { moved.current = true; if (e?.target) (e.target as unknown as { autoRotate: boolean }).autoRotate = false; }} />
     </>
   );

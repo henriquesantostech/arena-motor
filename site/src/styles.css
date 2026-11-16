@@ -423,3 +423,15 @@ button.jrow:hover { background: rgba(140, 190, 255, .06); border-radius: 6px }
 .glinks { display: flex; flex-direction: column; overflow: auto; min-height: 0 }
 .gside .jrow { grid-template-columns: minmax(0, 1.4fr) 1fr 54px }
 @media (max-width: 820px) { .network { grid-template-columns: 1fr; overflow: auto } .gsearch { width: 140px } }
+
+/* ---------- X6: guided tour ---------- */
+.tour { position: fixed; inset: 0; z-index: 50; pointer-events: none }
+.spot { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(2, 4, 10, .55), 0 0 30px rgba(120, 200, 255, .6); border: 1px solid rgba(160, 210, 255, .7); transition: all .45s var(--ease) }
+.tcap { position: fixed; left: 50%; bottom: 14%; transform: none; width: min(360px, calc(100vw - 32px)); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; background: rgba(8, 14, 30, .94); animation: rise .35s var(--ease); transition: left .45s var(--ease), top .45s var(--ease) }
+.tcap:not([style]) { left: calc(50% - 180px) }
+.tcap b { font-size: 17px } .tcap span { color: var(--mute); font-size: 13.5px; line-height: 1.45 }
+.tbar { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden; margin-top: 4px }
+.tbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--index), var(--wave)); animation: tbar 3.4s linear forwards }
+@keyframes tbar { from { width: 0 } to { width: 100% } }
+.tbtn { display: flex; justify-content: flex-end; gap: 8px } .tbtn .chip { cursor: pointer }
+.tcap[style] { bottom: auto }

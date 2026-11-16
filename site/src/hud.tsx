@@ -249,11 +249,11 @@ export function Palette({ M, onClose, onPick, setI, setLens }: { M: Model; onClo
   );
 }
 
-export function Help({ M, onClose }: { M: Model; onClose: () => void }) {
+export function Help({ M, onClose, onTour }: { M: Model; onClose: () => void; onTour?: () => void }) {
   return (
     <div className="veil" onClick={onClose}>
       <div className="help glass" role="dialog" aria-modal="true" aria-label="How to read">
-        <h2>How to read the arena</h2>
+        <h2>How to read the arena {onTour && <button className="chip on" style={{ marginLeft: 12, cursor: "pointer" }} onClick={e => { e.stopPropagation(); onTour(); }}>▶ 20-second tour</button>}</h2>
         <div><span className="ic"><span className="gem" style={{ background: SPECIES_COLOR.arrow }} /></span><span><b>Each crystal is an agent</b>Colour = species. Bigger = more money. Glowing = traded at that day's open.</span></div>
         <div><span className="ic"><span className="wave" /></span><span><b>The water is the S&P 500</b>Above the water = beating the index. Below = losing to it.</span></div>
         <div><span className="ic"><span className="dot" style={{ background: COLOR.luck }} /></span><span><b>The grey band is luck</b>{nf(M.luckN)} monkeys follow the same rules but pick at random; 90% end inside the band. Only agents above it show more than luck.</span></div>
