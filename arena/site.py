@@ -45,9 +45,12 @@ def build(archive):
         shutil.rmtree(f) if f.is_dir() else f.unlink()
     shutil.copytree(DIST, out, dirs_exist_ok=True)
     (out / "data" / "days").mkdir(parents=True, exist_ok=True)
+    (out / "data" / "journal").mkdir(parents=True, exist_ok=True)
     (out / "data" / "arena.json").write_text(_dump(data), encoding="utf-8", newline="\n")
     for d, sh in shards.items():
         (out / "data" / "days" / f"{d}.json").write_text(_dump(sh), encoding="utf-8", newline="\n")
+    for d, page in journal_pages(archive, days, data).items():
+        (out / "data" / "journal" / f"{d}.json").write_text(_dump(page), encoding="utf-8", newline="\n")
     return data
 
 
@@ -104,6 +107,7 @@ def build_data(archive, days):
     species = {sp_key[e]: {"label": v.get("prefix") or e, "family": e, "about": SPECIES_ABOUT.get(sp_key[e], v.get("description", ""))}
                for e, v in sp_all.items()}
     meta["signals"] = {k: SIGNAL_LABEL.get(k, k) for k in config.SIGNALS}
+    meta["generation"] = config.POPULATION.get("generation", 1)
     meta["evidence"] = _evidence(archive)
     if not days:
         return {"meta": {**meta, "updated": None, "dates": [], "marks": []}, "species": species, "p": [], "band": [], "day": None}
@@ -252,3 +256,97 @@ def _prices(archive, last):
     rate = last["market"]["eurusd"]
     tickers = {t for p in last["state"]["participants"].values() for t in p["positions"]}
     return {t: (view.close(t, last["date"]) or view.last_close(t) or 0) / rate for t in tickers}
+
+
+# ---------- JOURNAL: one page per night, built only from what was known that night ----------
+def _read_json(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    except (ValueError, OSError):
+        return None
+
+
+def journal_pages(archive, days, data):
+    """The daily newspaper (Experience v2, 3.5): Markets, World, Companies, People, Arena, and a front page.
+    Every item carries its source (journal fingerprint, price file, or the World Brief citations)."""
+    import pandas as pd
+    if not days:
+        return {}
+    names = {c["ticker"]: c for c in config.UNIVERSE["companies"]}
+    prices = archive.read("prices")
+    prices = prices[prices["date"] <= days[-1]]
+    close = prices.pivot_table(index="date", columns="ticker", values="close", aggfunc="last").sort_index()
+    ret = close.pct_change(fill_method=None)
+    by_id = {p["id"]: p for p in data["p"]}
+    dates = data["meta"]["dates"]
+    docs = _read_json(archive.root / "intel" / "site" / "docs.json") or {}
+    alerts = (_read_json(archive.root / "intel" / "site" / "alerts.json") or {}).get("alerts", [])
+    pages = {}
+    for k, d in enumerate(days):
+        j = archive.read_journal(d)
+        path = archive.journal_path(d)
+        src_journal = {"kind": "journal", "label": f"Arena journal {d}", "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        src_prices = {"kind": "prices", "label": "Closing prices (Yahoo, cross-checked with Tiingo)", "sha256": (j.get("inputs") or {}).get("prices")}
+        r = ret.loc[d] if d in ret.index else pd.Series(dtype=float)
+        r = r[[t for t in r.index if t in names]].dropna()
+        movers = [{"t": t, "name": names[t]["name"], "sector": names[t]["sector"], "ret": round(float(v), 5)}
+                  for t, v in pd.concat([r.nlargest(5), r.nsmallest(5)]).items()]
+        sectors = {}
+        for t, v in r.items():
+            sectors.setdefault(names[t]["sector"], []).append(float(v))
+        sector_rows = sorted(({"sector": sct, "ret": round(sum(v) / len(v), 5), "n": len(v)} for sct, v in sectors.items()),
+                             key=lambda x: -x["ret"])
+        m, m0 = j.get("market") or {}, (archive.read_journal(days[k - 1]).get("market") if k else {}) or {}
+        spx = round(m["sp500"] / m0["sp500"] - 1, 5) if m.get("sp500") and m0.get("sp500") else None
+        fills = [{"id": _slug(n), "k": f["side"], "t": f["ticker"], "eur": f["eur"]} for n, dec in j["decisions"].items() for f in dec["fills"]]
+        traded = {}
+        for f in fills:
+            if f["t"] in names:
+                traded.setdefault(f["t"], {"t": f["t"], "name": names[f["t"]]["name"], "buys": 0, "sells": 0})["buys" if f["k"] == "buy" else "sells"] += 1
+        i = dates.index(d)
+        arena_moves = []
+        if i > 0:
+            for p in data["p"]:
+                if p["type"] != "agent":
+                    continue
+                off = dates.index(p["from"]) if p["from"] in dates else 0
+                a, b = i - off - 1, i - off
+                if a >= 0 and b < len(p["s"]):
+                    arena_moves.append({"id": p["id"], "name": p["name"], "ret": round(p["s"][b] / p["s"][a] - 1, 5)})
+        arena_moves.sort(key=lambda x: -x["ret"])
+        brief = _read_json(archive.root / "intel" / "brief" / d[:4] / f"{d}.json")
+        world = None
+        if brief and isinstance(brief.get("brief"), dict) and "invalid_json" not in brief["brief"]:
+            b = brief["brief"]
+            cite = lambda ids: [{"id": c, **({k2: docs[c].get(k2) for k2 in ("title", "url", "source", "published_at")} if c in docs else {})} for c in ids or []]
+            world = {"as_of": brief.get("as_of"), "model": brief.get("model"), "headline": b.get("headline"),
+                     "items": [{"topic": w.get("topic"), "summary": w.get("summary"), "cites": cite(w.get("citations"))} for w in b.get("world", [])],
+                     "markets": b.get("markets"),
+                     "sectors": [{"sector": x.get("sector"), "score": x.get("score"), "reason": x.get("reason"), "cites": cite(x.get("citations"))} for x in b.get("sectors", [])],
+                     "watch": b.get("watch", []), "unknown_citations": brief.get("unknown_citations", [])}
+        people = [a for a in alerts if str(a.get("disclosed_at", ""))[:10] == d]
+        front = []
+        if spx is not None:
+            front.append({"k": "market", "title": f"S&P 500 {'up' if spx >= 0 else 'down'} {abs(spx) * 100:.1f}% (USD)", "v": spx, "src": "prices"})
+        if movers:
+            top = max(movers, key=lambda x: abs(x["ret"]))
+            front.append({"k": "company", "title": f"{top['name']} {'+' if top['ret'] >= 0 else '−'}{abs(top['ret']) * 100:.1f}%", "t": top["t"], "v": top["ret"], "src": "prices"})
+        if arena_moves:
+            top = max(arena_moves, key=lambda x: abs(x["ret"]))
+            front.append({"k": "arena", "title": f"{top['name']} {'+' if top['ret'] >= 0 else '−'}{abs(top['ret']) * 100:.1f}% on the day", "id": top["id"], "v": top["ret"], "src": "journal"})
+        if world and world.get("headline"):
+            front.insert(0, {"k": "world", "title": world["headline"], "src": "brief"})
+        if people:
+            front.append({"k": "people", "title": f"{len(people)} new disclosure{'s' if len(people) > 1 else ''}", "src": "alerts"})
+        front.sort(key=lambda x: (x["k"] != "world", -abs(x.get("v") or 0)))
+        pages[d] = {
+            "date": d, "front": front[:4],
+            "markets": {"spx": spx, "eurusd": m.get("eurusd"), "above_ma": m.get("above_ma"), "sectors": sector_rows, "movers": movers},
+            "companies": {"traded": sorted(traded.values(), key=lambda x: -(x["buys"] + x["sells"]))[:10], "movers": movers},
+            "arena": {"fills": len(fills), "buys": sum(f["k"] == "buy" for f in fills), "sells": sum(f["k"] == "sell" for f in fills),
+                      "agents": len({f["id"] for f in fills}), "best": arena_moves[:3], "worst": arena_moves[-3:][::-1] if arena_moves else [],
+                      "excluded": (j.get("checks") or {}).get("excluded", []), "rule_changes": j.get("rule_changes")},
+            "world": world, "people": people,
+            "sources": {"journal": src_journal, "prices": src_prices, **({"brief": {"kind": "brief", "label": f"World Brief ({world['model']})", "as_of": world["as_of"]}} if world else {})},
+        }
+    return pages
