@@ -5,6 +5,7 @@ The brief is an input to humans and the site. Its sector headwind/tailwind score
 `brief_sector_tailwind`, which must pass the Signal Lab like any other.
 """
 import json
+import re
 from datetime import date, timedelta
 
 from ... import config
@@ -75,12 +76,45 @@ def _context(con, T):
     return "\n".join(lines), set(docs["doc_id"]) if len(docs) else set()
 
 
+def _salvage(raw):
+    """Keep the complete leading parts of a cut-off answer (headline, then every whole sector object), so the
+    sector scores survive; the brief is marked partial and the raw text kept for audit."""
+    out = {"invalid_json": raw[:4000], "partial": True}
+    dec = json.JSONDecoder()
+    m = re.search(r'"headline"\s*:\s*', raw)
+    if m:
+        try:
+            out["headline"] = dec.raw_decode(raw, m.end())[0]
+        except json.JSONDecodeError:
+            pass
+    i = raw.find('"sectors"')
+    if i < 0:
+        return out
+    j = raw.find("[", i) + 1
+    secs = []
+    while j > 0:
+        k = raw.find("{", j)
+        if k < 0:
+            break
+        try:
+            obj, j = dec.raw_decode(raw, k)
+        except json.JSONDecodeError:
+            break
+        if isinstance(obj, dict) and obj.get("sector") in SECTORS and obj.get("score") in (-2, -1, 0, 1, 2):
+            secs.append(obj)
+        nxt = raw[j:].lstrip()
+        if not nxt.startswith(","):
+            break
+    out["sectors"] = secs
+    return out
+
+
 def write_brief(store, models, T=None):
     T = T or utcnow()
     day = T[:10]
     path = store.root / "brief" / day[:4] / f"{day}.json"
-    if path.exists():
-        return {"brief": "exists", "day": day}
+    if path.exists() and "invalid_json" not in json.loads(path.read_text(encoding="utf-8")).get("brief", {}):
+        return {"brief": "exists", "day": day}   # a cut-off brief of the same day may be retried once more
     rc = cfg()["readers"]["brief"]
     con = store.connect()
     ctx, ids = _context(con, T)
@@ -90,7 +124,7 @@ def write_brief(store, models, T=None):
     try:
         out = json.loads(raw)
     except json.JSONDecodeError:
-        out = {"invalid_json": raw[:4000]}
+        out = _salvage(raw)
     bad = sorted({c for sec in out.get("world", []) + out.get("sectors", []) for c in sec.get("citations", [])} - ids)
     brief = {"as_of": T, "model": rc["model"], "model_sha": rc["sha256"], "reader_version": rc["version"],
              "runtime": runtime, "documents_in_context": len(ids), "unknown_citations": bad, "brief": out}

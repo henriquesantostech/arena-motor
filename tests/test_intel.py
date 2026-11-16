@@ -189,3 +189,14 @@ def test_store_add_accepts_dataframes(store):
     df = pd.DataFrame([{"date": "2026-11-13", "ticker": "AAPL", "signal_id": "intel.x", "value": 1.0,
                         "published_at": "a", "recorded_at": "b"}])
     assert store.add("signals", df) == 1
+
+
+def test_brief_salvage_keeps_whole_sectors():
+    from arena.intel.readers.brief import SECTORS, _salvage
+    s0, s1 = SECTORS[0], SECTORS[1]
+    raw = ('{"headline": "H", "sectors": [{"sector": "%s", "score": -2, "reason": "r", "citations": ["a"]}, '
+           '{"sector": "%s", "score": 1, "reason": "cut' % (s0, s1))
+    out = _salvage(raw)
+    assert out["partial"] and out["headline"] == "H"
+    assert [(x["sector"], x["score"]) for x in out["sectors"]] == [(s0, -2)]
+    assert _salvage('{"head')["partial"]
