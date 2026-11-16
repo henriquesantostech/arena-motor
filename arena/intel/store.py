@@ -102,10 +102,10 @@ class Store:
     # --- tables ------------------------------------------------------------------
     def add(self, table, rows):
         """Queues rows for the table; written by flush() as one new partition per table and run."""
-        if not rows:
-            return 0
         if isinstance(rows, pd.DataFrame):
             rows = rows.to_dict("records")
+        if not rows:
+            return 0
         self._pending.setdefault(table, []).extend(rows)
         return len(rows)
 

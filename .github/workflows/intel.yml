@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SHARDS: "4"
+  SHARDS: "6"
 
 jobs:
   ingest:
@@ -88,10 +88,12 @@ jobs:
           - {reader: finbert, shard: 0, shards: 1}
           - {reader: gliner, shard: 0, shards: 1}
           - {reader: embed, shard: 0, shards: 1}
-          - {reader: llm, shard: 0, shards: 4}
-          - {reader: llm, shard: 1, shards: 4}
-          - {reader: llm, shard: 2, shards: 4}
-          - {reader: llm, shard: 3, shards: 4}
+          - {reader: llm, shard: 0, shards: 6}
+          - {reader: llm, shard: 1, shards: 6}
+          - {reader: llm, shard: 2, shards: 6}
+          - {reader: llm, shard: 3, shards: 6}
+          - {reader: llm, shard: 4, shards: 6}
+          - {reader: llm, shard: 5, shards: 6}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

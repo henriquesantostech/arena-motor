@@ -182,3 +182,10 @@ def test_edgar_header_and_index_parsing():
     assert accepted_utc(h["accepted"]) == "2026-11-12T13:52:41Z"     # header clock is New York
     idx = "CIK|Company Name|Form Type|Date Filed|File Name\n---\n1045810|NVIDIA CORP|8-K|20261112|edgar/data/1045810/0001045810-26-000082.txt\n1000275|ROYAL BANK|424B2|20261112|x.txt\n"
     assert parse_master_index(idx, {"0001045810"}) == [("0001045810", "NVIDIA CORP", "8-K", "edgar/data/1045810/0001045810-26-000082.txt")]
+
+
+def test_store_add_accepts_dataframes(store):
+    assert store.add("signals", pd.DataFrame(columns=["date"])) == 0
+    df = pd.DataFrame([{"date": "2026-11-13", "ticker": "AAPL", "signal_id": "intel.x", "value": 1.0,
+                        "published_at": "a", "recorded_at": "b"}])
+    assert store.add("signals", df) == 1
