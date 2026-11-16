@@ -1,10 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { buildModel, loadArena, type Arena, type Model } from "./data";
 import { detectTier, hasWebGL2, savedTier, saveTier, type Tier } from "./quality";
 import { Board, Help, Kpis, Legend, Palette, Podium, TimeMachine, Tip, Top, type Lens, type TipState } from "./hud";
 import { Today } from "./Today";
 import { Journal } from "./Journal";
 import { Evolution } from "./Evolution";
+import { Lab, People } from "./Intel";
 import { Ask } from "./Ask";
 import type { Action } from "./copilot";
 import { AgentCard } from "./card/AgentCard";
@@ -19,6 +20,14 @@ function report() {
     (window as unknown as { ARENA_PERF: unknown }).ARENA_PERF = r;
     if (/[?&]perf\b/.test(location.search)) console.table(r);
   } catch { /* ignore */ }
+}
+
+// One lens failing must never blank the whole site.
+class Guard extends Component<{ children: ReactNode; k: string }, { err: boolean }> {
+  state = { err: false };
+  static getDerivedStateFromError() { return { err: true }; }
+  componentDidUpdate(p: { k: string }) { if (p.k !== this.props.k && this.state.err) this.setState({ err: false }); }
+  render() { return this.state.err ? <div className="glass" style={{ gridColumn: "1 / -1", gridRow: "2 / 6", padding: 24, alignSelf: "start" }}>This view could not be drawn with today's data. The other views still work.</div> : this.props.children; }
 }
 
 export default function App() {
@@ -84,7 +93,7 @@ function Ready({ A }: { A: Arena }) {
     performance.mark("arena:" + what); report();
   }, []);
   useEffect(() => { if (tier === "lite") setWorldUp(false); }, [tier]);
-  const at = lens === "today" || lens === "evolution" ? M.last : i;
+  const at = lens === "arena" || lens === "journal" ? i : M.last;
   const setDay = useCallback((n: number) => { setPlaying(false); setI(n); }, []);
   const onAction = useCallback((a: Action) => {
     if (a.type === "lens" && a.lens) setLens(a.lens as Lens);
@@ -103,16 +112,18 @@ function Ready({ A }: { A: Arena }) {
       <div className="grain" />
       <main className={"hud lens-" + lens}>
         <Top M={M} i={at} tier={tier} setTier={setTier} gl={gl} lens={lens} setLens={setLens} onHelp={() => setHelp(true)} onPalette={() => setPalette(true)} onAsk={() => setAsking(a => !a)} asking={asking} />
-        {lens === "today" ? <Today M={M} onPick={show} setLens={setLens} />
+        <Guard k={lens}>{lens === "today" ? <Today M={M} onPick={show} setLens={setLens} />
           : lens === "journal" ? <Journal M={M} i={i} setI={setDay} onPick={show} />
-            : lens === "evolution" ? <Evolution M={M} onPick={show} /> : <>
+            : lens === "evolution" ? <Evolution M={M} onPick={show} />
+              : lens === "lab" ? <Lab M={M} onPick={show} />
+                : lens === "people" ? <People M={M} /> : <>
           <Kpis M={M} i={i} onPick={show} />
           <Board M={M} i={i} open={board} hover={hover} onPick={show} onHover={id => setHover(id)} />
           <Podium M={M} i={i} onPick={show} />
           <TimeMachine M={M} i={i} setI={setI} playing={playing} setPlaying={setPlaying} />
           <Legend M={M} />
           <button className="rankbtn" onClick={() => setBoard(b => !b)}>Ranking</button>
-        </>}
+        </>}</Guard>
         <footer className="fine">Simulated money · Not investment advice</footer>
       </main>
       <Tip M={M} i={at} tip={tip} />

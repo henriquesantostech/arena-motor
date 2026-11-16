@@ -356,3 +356,35 @@ button.jrow:hover { background: rgba(140, 190, 255, .06); border-radius: 6px }
 .askin input:focus { border-color: var(--edge-hi) }
 .mic.on { color: var(--down); border-color: rgba(255, 107, 107, .6); box-shadow: 0 0 16px rgba(255, 107, 107, .4) }
 @media (max-width: 820px) { .ask { top: auto; height: 70vh; left: 10px; right: 10px; width: auto } .askbtn { padding: 0 12px } }
+
+/* ---------- X5: LAB and PEOPLE ---------- */
+.lab, .people { grid-column: 1 / -1; grid-row: 2 / 6; display: grid; grid-template-columns: 1.6fr 1fr; gap: var(--gap); min-height: 0 }
+.lab > .glass, .people > .glass { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; background: rgba(6, 11, 24, .74); animation: rise .4s var(--ease) both }
+.lab header, .people header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap }
+.ladder { flex: 1; min-height: 0; display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr; gap: 10px; overflow: auto; align-items: start }
+.rung.shadow { display: grid; grid-template-columns: 1fr 1fr; align-content: start } .rung.shadow > .lbl { grid-column: 1 / -1 }
+.rung { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 12px; background: rgba(255, 255, 255, .02); border: 1px dashed var(--line) }
+.rung.candidate { border-color: rgba(255, 211, 77, .3) } .rung.admitted { border-color: rgba(62, 224, 143, .4) } .rung.rejected { border-color: rgba(255, 107, 107, .3) }
+.sig { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .035); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 5px; font-size: 12.5px }
+.sig-h { display: flex; justify-content: space-between; gap: 6px; align-items: center }
+.sig-h b { font-weight: 600; text-transform: capitalize }
+.badge.reh { color: var(--gold); border-color: rgba(255, 211, 77, .35) }
+.tgauge { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .05) }
+.tgauge::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(255, 255, 255, .25) }
+.tgauge .val { position: absolute; top: 0; height: 100%; border-radius: 4px }
+.tgauge .need { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--gold); opacity: .8 }
+.sig-f { display: flex; gap: 10px; align-items: flex-end; font-size: 11.5px; color: var(--mute) }
+.subs { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; margin-left: auto } .subs i { width: 5px; border-radius: 1px }
+.gates { display: flex; gap: 6px; font-size: 11px }
+.luckrows { flex: 1; min-height: 0; overflow: auto }
+.luckrows .jrow { grid-template-columns: minmax(0, 1fr) 1.4fr 48px }
+.lm { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .05) }
+.lm i { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; opacity: .85 }
+.lm b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; opacity: .7 }
+.ppl-orbit svg { flex: 1; min-height: 0; width: 100% }
+.plist { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px }
+.prow { display: grid; grid-template-columns: 50px 52px minmax(0, 1fr) auto 50px; gap: 8px; align-items: center; font-size: 12.5px; padding: 4px 4px; border-radius: 7px }
+.prow:hover { background: rgba(140, 190, 255, .07) } .prow.dim { opacity: .4 }
+.pname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.mirror { padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px }
+@media (max-width: 820px) { .lab, .people { grid-template-columns: 1fr; overflow: auto } .ladder { grid-template-columns: 1fr 1fr } }

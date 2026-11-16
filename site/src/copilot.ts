@@ -77,8 +77,8 @@ export function parseCommand(q: string, M: Model): Action[] {
   else if (/\b(first day|day zero|beginning|start)\b/.test(s)) d = dates[0];
   else if (/\byesterday\b/.test(s)) d = dates[Math.max(0, dates.length - 2)];
   else if (/\b(today|latest|now|live)\b/.test(s) && verb) d = dates[dates.length - 1];
-  const lens = s.match(/\b(journal|newspaper|evolution|tree|today|arena)\b/)?.[1];
-  if (lens && verb) acts.push({ type: "lens", lens: lens === "newspaper" ? "journal" : lens === "tree" ? "evolution" : lens });
+  const lens = s.match(/\b(journal|newspaper|evolution|tree|today|arena|lab|evidence|people|insiders?|congress)\b/)?.[1];
+  if (lens && verb) acts.push({ type: "lens", lens: lens === "newspaper" ? "journal" : lens === "tree" ? "evolution" : lens === "evidence" ? "lab" : /insider|congress/.test(lens) ? "people" : lens });
   if (d && (verb || p)) { if (!lens) acts.push({ type: "lens", lens: "arena" }); acts.push({ type: "date", d }); }
   if (p && verb) acts.push({ type: "open", id: p.id });
   if (/\b(close|back|exit)\b/.test(s) && acts.length === 0 && s.split(" ").length < 4) acts.push({ type: "close" });
