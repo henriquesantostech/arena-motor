@@ -58,5 +58,31 @@
    "training_cutoff": "2026-03-02 (release date used as a conservative bound; the cutoff is not published)",
    "version": "1"
   }
+ },
+ "candidates": {
+  "llm-gemma4-e4b": {
+   "reader": "llm",
+   "role": "candidate for the structured reading (exam only until admitted)",
+   "model": "unsloth/gemma-4-E4B-it-GGUF",
+   "file": "gemma-4-E4B-it-Q4_K_M.gguf",
+   "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
+   "license": "Apache 2.0",
+   "training_cutoff": "2026-04-01 (release date used as a conservative bound; the cutoff is not published)",
+   "max_items": 150,
+   "version": "c1"
+  },
+  "embed-qwen3-0.6b": {
+   "reader": "embed",
+   "role": "candidate for retrieval embeddings (exam only until admitted)",
+   "model": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+   "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+   "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+   "license": "Apache 2.0",
+   "training_cutoff": "2025-06-05 (release date used as a conservative bound)",
+   "dims": 256,
+   "pooling": "last",
+   "doc_prefix": "",
+   "version": "c1"
+  }
  }
 }

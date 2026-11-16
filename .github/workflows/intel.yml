@@ -123,7 +123,7 @@ jobs:
           path: models
           key: gguf-${{ matrix.reader }}-${{ hashFiles('rules/readers.json') }}
       - name: Pinned models (SHA-256 verified)
-        if: matrix.reader == 'embed' || matrix.reader == 'llm'
+        if: matrix.reader != 'finbert' && matrix.reader != 'gliner'
         run: python -m arena.intel.readers.fetch_models --models models --only llama,${{ matrix.reader }}
       - name: Read (shard ${{ matrix.shard }} of ${{ matrix.shards }})
         run: python -m arena.intel read --reader ${{ matrix.reader }} --shard ${{ matrix.shard }} --shards ${{ matrix.shards }} --work work --models models
@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        reader: [finbert, gliner, embed, llm]
+        reader: [finbert, gliner, embed, llm, llm-gemma4-e4b, embed-qwen3-0.6b]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -155,7 +155,7 @@ jobs:
             pip install -q pandas==3.1.1 pyarrow==26.0.1 requests==2.34.2 numpy
           fi
       - name: Pinned models (SHA-256 verified)
-        if: matrix.reader == 'embed' || matrix.reader == 'llm'
+        if: matrix.reader != 'finbert' && matrix.reader != 'gliner'
         run: python -m arena.intel.readers.fetch_models --models models --only llama,${{ matrix.reader }}
       - name: Exam
         run: python -m arena.intel exam --reader ${{ matrix.reader }} --models models --work exam

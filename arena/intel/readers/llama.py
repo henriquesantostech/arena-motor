@@ -19,6 +19,15 @@ def cfg():
     return json.loads((config.RULES_DIR / "readers.json").read_text(encoding="utf-8"))
 
 
+def reader_cfg(name):
+    """(reader kind, config) for a pinned reader or an exam candidate such as "llm-gemma4-e4b"."""
+    c = cfg()
+    if name in c["readers"]:
+        return name, c["readers"][name]
+    rc = c.get("candidates", {})[name]
+    return rc["reader"], rc
+
+
 def cpu_flags():
     try:
         txt = Path("/proc/cpuinfo").read_text()
@@ -31,7 +40,7 @@ def cpu_flags():
 
 
 class Server:
-    def __init__(self, models_dir, model_file, embedding=False, port=8089, ctx=None):
+    def __init__(self, models_dir, model_file, embedding=False, port=8089, ctx=None, pooling="mean"):
         rt = cfg()["runtime"]["llama_cpp"]
         self.flags = rt["flags"]
         self.port = port
@@ -43,7 +52,7 @@ class Server:
                 "-t", str(self.flags["threads"]), "-b", str(self.flags["batch"]), "-c", str(ctx or self.flags["ctx"]),
                 "--seed", str(self.flags["seed"]), "-np", "1", "--no-webui", "--jinja"]
         if embedding:
-            args += ["--embedding", "--pooling", "mean", "-ub", "2048", "-b", "2048"]
+            args += ["--embedding", "--pooling", pooling, "-ub", "2048", "-b", "2048"]
         self.runtime = {"llama_cpp": rt["release"], "threads": self.flags["threads"], "batch": self.flags["batch"],
                         "seed": self.flags["seed"], "cpu": cpu_flags()}
         self.log = Path(models_dir) / f"llama-server-{port}.log"   # server log: model metadata only, no data

@@ -13,7 +13,7 @@ from pathlib import Path
 from ... import config
 from ...archive import write_json
 from . import READERS
-from .llama import cfg
+from .llama import reader_cfg
 
 EXAM_DIR = config.RULES_DIR / "exam"
 
@@ -99,9 +99,11 @@ CHECKS = {"json_valid": ("json_valid_min", 1), "event_type_accuracy": ("event_ty
           "seconds_per_item": ("max_seconds_per_item", -1)}
 
 
-def run_exam(store, reader, models, work, version="v1"):
+def run_exam(store, name, models, work, version="v1"):
+    """`name` is a pinned reader (llm, embed, ...) or a candidate from readers.json (e.g. llm-gemma4-e4b): a candidate
+    sits the same exam, with the same frozen thresholds, as the reader it would replace."""
     items, meta = load(version)
-    rc = cfg()["readers"][reader]
+    reader, rc = reader_cfg(name)
     t0 = time.monotonic()
     rows = READERS[reader](_work_items(items), rc, models or "models")
     secs = (time.monotonic() - t0) / max(1, len(items))
@@ -113,10 +115,10 @@ def run_exam(store, reader, models, work, version="v1"):
         if k in CHECKS and CHECKS[k][0] in rules and v is not None:
             lim, sign = rules[CHECKS[k][0]], CHECKS[k][1]
             passed[k] = v >= lim if sign > 0 else v <= lim
-    result = {"reader": reader, "model": rc["model"], "model_sha": rc.get("sha256"), "exam": version,
+    result = {"reader": reader, "candidate": name if name != reader else None, "model": rc["model"], "model_sha": rc.get("sha256"), "exam": version,
               "ran_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "items": len(items),
               "scores": scores, "thresholds": rules, "passed": passed, "admitted": all(passed.values()) if passed else False,
               "outputs": [{"id": r["doc_id"], "label": r["label"], "output": r["output"]} for r in rows]}
     base = store.root / "exam" if store else Path(work or ".")
-    write_json(base / f"{reader}-{result['ran_at'][:10]}.json", result)
-    return {"reader": reader, "scores": scores, "admitted": result["admitted"]}
+    write_json(base / f"{name}-{result['ran_at'][:10]}.json", result)
+    return {"reader": name, "scores": scores, "admitted": result["admitted"]}

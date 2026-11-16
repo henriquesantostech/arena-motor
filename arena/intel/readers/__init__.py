@@ -89,10 +89,11 @@ def read_gliner(items, rc, models):
 
 def read_embed(items, rc, models):
     rows = []
-    with Server(models, rc["file"], embedding=True, port=8091, ctx=2048) as srv:
+    prefix = rc.get("doc_prefix", "title: none | text: ")    # EmbeddingGemma document prompt by default
+    with Server(models, rc["file"], embedding=True, port=8091, ctx=2048, pooling=rc.get("pooling", "mean")) as srv:
         for i in range(0, len(items), 16):
             batch = items[i:i + 16]
-            vecs = srv.embed(["title: none | text: " + it["text"][:1500] for it in batch], rc["dims"])
+            vecs = srv.embed([prefix + it["text"][:1500] for it in batch], rc["dims"])
             for it, v in zip(batch, vecs):
                 rows.append(_row(it["doc_id"], "embed", rc, None, None, {"v": v}, srv.runtime))
     return rows

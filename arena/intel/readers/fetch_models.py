@@ -12,7 +12,7 @@ from pathlib import Path
 
 import requests
 
-from .llama import cfg
+from .llama import cfg, reader_cfg
 
 HF = "https://huggingface.co/{repo}/resolve/main/{file}"
 
@@ -62,7 +62,7 @@ def main(argv=None):
                 with tarfile.open(tgz) as t:
                     t.extractall(target, filter="data")      # keeps the shared-library symlinks
         else:
-            rc = c["readers"][name]
+            rc = reader_cfg(name)[1]
             print(name, _download(HF.format(repo=rc["model"], file=rc["file"]), out / rc["file"], rc["sha256"]))
     return 0
 
