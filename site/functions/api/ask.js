@@ -38,7 +38,7 @@ export async function onRequestPost({ request, env }) {
   hits.set(who, [...h, now]);
 
   const ctx = passages.map((p, i) => `[${p.id}] (${p.d || "undated"}) ${p.title}: ${p.text}`).join("\n");
-  const user = `as of: ${String(body.asOf || "latest").slice(0, 10)}\nlang: ${String(body.lang || "en").slice(0, 12)}\nquestion: ${q}\n\npassages:\n${ctx || "(none)"}`;
+  const user = `as of: ${String(body.asOf || "latest").slice(0, 10)}\n(reply in the language the question is written in)\nquestion: ${q}\n\npassages:\n${ctx || "(none)"}`;
   for (const model of MODELS) {
     try {
       const r = await env.AI.run(model, {
