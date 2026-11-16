@@ -34,7 +34,7 @@ env:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - name: Private archive
@@ -55,6 +55,7 @@ jobs:
           FRED_KEY: ${{ secrets.FRED_KEY }}
           BLS_KEY: ${{ secrets.BLS_KEY }}
           BEA_KEY: ${{ secrets.BEA_KEY }}
+          INTEL_INGEST_BUDGET_S: "1800"
         run: python -m arena.intel ingest --archive arquivo
       - name: Save to the archive
         if: github.event_name == 'schedule' || inputs.save

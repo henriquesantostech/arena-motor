@@ -54,6 +54,10 @@ class Context:
 def run(ctx, only=None, skip=None, mode="ingest"):
     """Runs every enabled adapter (or the ones named). Returns {source_id: summary}."""
     results = {}
+    # one wall-time budget for the whole ingest; each adapter gets min(its own budget, what is left).
+    # Adapters stop cleanly when out of time and resume from their cursors the next night.
+    total = float(os.environ.get("INTEL_INGEST_BUDGET_S", 0) or 0) or None
+    t_start = time.monotonic()
     for s in registry():
         sid = s["id"]
         if only and sid not in only:
@@ -74,6 +78,12 @@ def run(ctx, only=None, skip=None, mode="ingest"):
             continue
         ctx.started = time.monotonic()
         ctx.budget_s = float(ctx.budget_override or s.get("budget_s", 600))
+        if total:
+            left = total - (time.monotonic() - t_start)
+            if left < 30:
+                results[sid] = "skipped (night budget used)"
+                continue
+            ctx.budget_s = min(ctx.budget_s, left)
         t0 = time.monotonic()
         try:
             r = fn(ctx)

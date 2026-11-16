@@ -33,6 +33,8 @@ def mirror_book(con, archive_root, kinds=("congress", "insider"), hold=HOLD_DAYS
     a = con.execute("""SELECT kind, ticker, action, disclosed_at, note FROM alerts WHERE action = 'buy'
                        QUALIFY ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY recorded_at) = 1""").df()
     a = a[a["kind"].isin(kinds)]
+    # one trade per disclosure and stock (joint filings list several owners for the same transaction)
+    a = a.sort_values(["disclosed_at", "ticker"]).drop_duplicates(["kind", "ticker", "disclosed_at"])
     p = Archive(archive_root).read("prices")
     opens = p.pivot_table(index="date", columns="ticker", values="open", aggfunc="last").astype(float).sort_index()
     days = list(opens.index)
