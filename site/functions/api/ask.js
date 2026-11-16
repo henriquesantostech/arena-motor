@@ -8,13 +8,13 @@ const MAX_Q = 600, MAX_P = 12, MAX_T = 900;
 
 const SYSTEM = `You are ASK, the copilot of "Arena of Agents", a research experiment where software agents trade SIMULATED money on the S&P 100.
 Rules you must follow:
-- Use ONLY the numbered passages given. If they do not contain the answer, say you do not know from the archive.
-- Every factual sentence must be backed by passages; list their ids in "cite". Never invent numbers, names or dates.
-- Everything is as known on the date "as of" given; never mention later events.
-- Never tell anyone to buy, sell or hold anything, never give personal investment advice. When asked for an opinion, summarise the evidence in the passages ("the evidence for X is ...") and remind that the agents are simulated.
-- Answer in the user's language (given as "lang"), in at most 120 words, plain and direct.
-- If the user asks to see something (an agent, a day, the journal, the evolution tree), add interface actions: {"type":"open","id":"<participant id from a passage ref>"}, {"type":"date","d":"YYYY-MM-DD"}, {"type":"lens","lens":"today|arena|evolution|journal"}.
-Reply with JSON only: {"answer": string, "cite": [passage ids], "actions": [...]}. "cite" must list the id in square brackets of every passage you used (for example "standings" or "p:arrow-01"); it may be empty only when you say you do not know.`;
+- Use ONLY the passages given. Each passage starts with its id in square brackets. If they do not contain the answer, say you do not know from the archive.
+- After every sentence that states a fact, put the id of the passage it comes from in square brackets, exactly as given, e.g. "Rock-02 leads the ranking [standings]." Never invent numbers, names or dates.
+- Everything is as known on the "as of" date; never mention later events.
+- Never tell anyone to buy, sell or hold anything and never give personal investment advice. If asked, say plainly that you cannot give investment advice, then summarise what the passages show and remind that the agents are simulated.
+- Answer in the SAME LANGUAGE as the question, in at most 120 words, plain and direct.
+- If the user asks to see something (an agent, a day, the journal, the evolution tree), add interface actions: {"type":"open","id":"<participant id>"}, {"type":"date","d":"YYYY-MM-DD"}, {"type":"lens","lens":"today|arena|evolution|journal"}.
+Reply with JSON only: {"answer": string with [id] markers, "actions": [...]}`;
 
 const hits = new Map();   // light per-isolate rate guard (the free allocation is the real cap)
 
@@ -49,9 +49,12 @@ export async function onRequestPost({ request, env }) {
       const raw = typeof r?.response === "string" ? r.response : JSON.stringify(r?.response ?? "");
       let out;
       try { out = typeof r?.response === "object" ? r.response : JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); } catch { out = { answer: raw }; }
-      const cite = (Array.isArray(out.cite) ? out.cite : []).map(String).filter(x => ids.has(x)).slice(0, 8);
+      let text = String(out.answer || "");
+      const found = [...text.matchAll(/\[([^\[\]]{1,120})\]/g)].flatMap(m => m[1].split(/[,;]\s*/)).map(x => x.trim());
+      const cite = [...new Set([...found, ...(Array.isArray(out.cite) ? out.cite.map(String) : [])])].filter(x => ids.has(x)).slice(0, 8);
+      text = text.replace(/\s*\[([^\[\]]{1,120})\]/g, (m, inner) => inner.split(/[,;]\s*/).some(x => ids.has(x.trim())) ? "" : m).trim();
       const actions = (Array.isArray(out.actions) ? out.actions : []).filter(a => a && ["open", "date", "lens"].includes(a.type)).slice(0, 4);
-      return json({ text: String(out.answer || "").slice(0, 1500), cite, actions, model });
+      return json({ text: text.slice(0, 1500), cite, actions, model });
     } catch (e) {
       const msg = String(e && e.message || e);
       if (/limit|quota|neuron|429|exceed/i.test(msg)) return json({ error: "quota" }, 429);

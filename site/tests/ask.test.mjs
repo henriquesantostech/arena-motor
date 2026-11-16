@@ -35,3 +35,11 @@ test("empty question -> 400", async () => {
   const r = await onRequestPost({ request: req({ q: "  ", passages: P }), env: { AI: { run: async () => ({}) } } });
   assert.equal(r.status, 400);
 });
+
+test("citations written inline as [id] are extracted and removed from the text", async () => {
+  const AI = { run: async () => ({ response: JSON.stringify({ answer: "Arrow-01 is up 2% [p:arrow-01]. It is simulated [about, made-up]. Odd [x].", actions: [] }) }) };
+  const r = await onRequestPost({ request: req({ q: "?", passages: P }), env: { AI } });
+  const j = await r.json();
+  assert.deepEqual(j.cite.sort(), ["about", "p:arrow-01"]);
+  assert.equal(j.text, "Arrow-01 is up 2%. It is simulated. Odd [x].");
+});
