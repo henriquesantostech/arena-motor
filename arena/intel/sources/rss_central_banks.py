@@ -12,7 +12,11 @@ FEEDS = [
 
 
 def ingest(ctx):
-    n = 0
+    from .. import http
+    n, failed = 0, 0
     for url, kind, ents in FEEDS:
-        n += add_rss(ctx, SOURCE_ID, url, kind, ents)
-    return {"documents": n}
+        try:
+            n += add_rss(ctx, SOURCE_ID, url, kind, ents)
+        except http.FetchError:
+            failed += 1
+    return {"documents": n, "feeds_failed": failed}

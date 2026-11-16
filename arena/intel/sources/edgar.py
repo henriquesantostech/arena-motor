@@ -159,7 +159,7 @@ def ingest(ctx):
         date.fromisoformat(cursor) + timedelta(days=1) if cursor else today - timedelta(days=30))
     retry = [tuple(x) for x in store.state("sec_retry", [])]
     n_days = n_filings = n_facts = n_tx = 0
-    todo = list(retry)
+    todo = []
     days = list(_business_days(start, today))
     for d in days:
         if d.isoformat() in done or ctx.out_of_time():
@@ -186,23 +186,32 @@ def ingest(ctx):
         if d.isoformat() not in done:
             break
         new_cursor = d.isoformat()
-    still = []
-    seen = set()
+    todo += retry                       # new filings first, then the backlog
+    unique, seen = [], set()
     for item in todo:
-        if item[3] in seen:
-            continue
-        seen.add(item[3])
+        if item[3] not in seen:
+            seen.add(item[3])
+            unique.append(item)
+
+    def work(item):
         if ctx.out_of_time():
-            still.append(list(item))
-            continue
+            return item, None
         try:
-            a, b, c = _filing(ctx, *item)
-            n_filings, n_facts, n_tx = n_filings + a, n_facts + b, n_tx + c
-            if item[2] in ("10-K", "10-Q", "10-K/A", "10-Q/A"):
-                due = set(store.state("xbrl_due", []))
-                store.set_state("xbrl_due", sorted(due | {item[0]}))
+            return item, _filing(ctx, *item)
         except (http.FetchError, ET.ParseError):
-            still.append(list(item))
+            return item, None
+
+    from concurrent.futures import ThreadPoolExecutor
+    still, due = [], set(store.state("xbrl_due", []))
+    with ThreadPoolExecutor(max_workers=4) as pool:      # SEC latency, not its 10/s limit, is the bottleneck
+        for item, res in pool.map(work, unique):
+            if res is None:
+                still.append(list(item))
+                continue
+            n_filings, n_facts, n_tx = n_filings + res[0], n_facts + res[1], n_tx + res[2]
+            if item[2] in ("10-K", "10-Q", "10-K/A", "10-Q/A"):
+                due.add(item[0])
+    store.set_state("xbrl_due", sorted(due))
     if new_cursor:
         store.set_state("sec_index_cursor", new_cursor)
     store.set_state("sec_index_done", sorted(x for x in done if not new_cursor or x > new_cursor))

@@ -17,6 +17,7 @@ from .llama import cfg
 KIND_WEIGHT = {"filing:8-K": 3, "filing:8-K/A": 1, "fedreg:presidential_document": 3, "cb:fed:press": 3,
                "cb:ecb:press": 2, "news": 2, "world_event": 2, "fedreg:rule": 1, "fedreg:public_inspection": 1,
                "filing:10-Q": 1, "filing:10-K": 1, "fda:press": 2, "social:hn": 1}
+MAX_ENCODER_ITEMS = 1500   # per night; the rest (lowest priority) waits, within the 3-day window
 IMPORTANT_ITEMS = {"1.01", "1.02", "1.05", "2.01", "2.02", "2.05", "2.06", "3.01", "4.02", "5.01", "5.02", "7.01", "8.01"}
 
 
@@ -54,11 +55,16 @@ def _press_release(store, doc):
         return ""
 
 
+def _j(v, default):
+    """JSON text column -> value; empty (None/NaN) -> default."""
+    return json.loads(v) if isinstance(v, str) and v else default
+
+
 def priority(doc):
     w = KIND_WEIGHT.get(doc["kind"], 0)
-    ents = json.loads(doc["entity_ids"] or "[]")
+    ents = _j(doc["entity_ids"], [])
     w += 3 * any(e.startswith("co:") for e in ents)
-    extra = json.loads(doc["extra"] or "{}") if doc["extra"] else {}
+    extra = _j(doc["extra"], {})
     if doc["kind"].startswith("filing:8-K"):
         items = set(extra.get("items") or [])
         w += 2 * bool(items & IMPORTANT_ITEMS) - 3 * (items <= {"9.01", "5.07", "5.03"})
@@ -87,14 +93,14 @@ def triage(store, shards=4, work=None):
     llm_ids = {d["doc_id"] for d in ranked[:max_llm] if d["priority"] >= 3}
     n = 0
     with open(wd / "items.jsonl", "w", encoding="utf-8", newline="\n") as f:
-        for d in ranked:
-            text = d["title"] or ""
+        for d in ranked[:MAX_ENCODER_ITEMS]:
+            text = d["title"] if isinstance(d["title"], str) else ""
             if d["doc_id"] in llm_ids and d["kind"].startswith("filing:8-K"):
                 body = _press_release(store, d)
                 if body:
                     text = f"{text}\n{body}"
             f.write(json.dumps({"doc_id": d["doc_id"], "kind": d["kind"], "published_at": d["published_at"],
-                                "entity_ids": json.loads(d["entity_ids"] or "[]"), "text": text,
+                                "entity_ids": _j(d["entity_ids"], []), "text": text,
                                 "llm": d["doc_id"] in llm_ids, "shard": shard_of(d["doc_id"], shards)},
                                ensure_ascii=False) + "\n")
             n += 1

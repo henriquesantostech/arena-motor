@@ -104,16 +104,18 @@ def _news(ctx):
         names.append((EXTRA_ALIASES.get(c["ticker"]) or [base_name(c["name"])])[0])
     names = sorted(set(names))
     n = 0
-    for i in range(0, len(names), 10):
+    for i in range(0, len(names), 20):
         if ctx.out_of_time():
             break
-        q = "(" + " OR ".join(f'"{x}"' for x in names[i:i + 10]) + ") sourcelang:english"
+        q = "(" + " OR ".join(f'"{x}"' for x in names[i:i + 20]) + ") sourcelang:english"
         try:
-            r, sha, path = http.fetch(ctx.store, SOURCE_ID, DOC, params={"query": q, "mode": "artlist", "format": "json",
-                                                                       "maxrecords": "250", "timespan": "1d",
-                                                                       "sort": "datedesc"})
+            r = http.get(DOC, params={"query": q, "mode": "artlist", "format": "json", "maxrecords": "250",
+                                      "timespan": "1d", "sort": "datedesc"}, tries=1, timeout=30)
+            sha, path = ctx.store.put_raw(SOURCE_ID, DOC, r.content, r.headers.get("Content-Type", ""))
             arts = r.json().get("articles", [])
-        except (http.FetchError, ValueError):
+        except http.FetchError:
+            break           # throttled: no retries tonight, the rest of the night must not wait
+        except ValueError:
             continue
         docs = []
         for a in arts:

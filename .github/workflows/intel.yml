@@ -56,6 +56,10 @@ jobs:
           BLS_KEY: ${{ secrets.BLS_KEY }}
           BEA_KEY: ${{ secrets.BEA_KEY }}
         run: python -m arena.intel ingest --archive arquivo
+      - name: Save to the archive
+        if: github.event_name == 'schedule' || inputs.save
+        working-directory: arquivo
+        run: bash ../.github/scripts/push_archive.sh "intel ingest"
       - name: Triage for the readers
         env:
           ARENA_CONTACT: ${{ secrets.ARENA_CONTACT }}
@@ -66,10 +70,10 @@ jobs:
           name: work
           path: work/items.jsonl
           retention-days: 1
-      - name: Save to the archive
+      - name: Save the triage fetches
         if: github.event_name == 'schedule' || inputs.save
         working-directory: arquivo
-        run: bash ../.github/scripts/push_archive.sh "intel ingest"
+        run: bash ../.github/scripts/push_archive.sh "intel triage"
 
   read:
     needs: ingest
