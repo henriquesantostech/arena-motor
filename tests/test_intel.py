@@ -218,3 +218,8 @@ def test_rehearsal_uses_only_readers_without_future_knowledge():
     live = {r["signal_id"] for r in compute_day(inp, "2026-01-06", ["AAPL"], cut)}
     assert reh == {"intel.news_sentiment_3d"}
     assert live == set()   # recorded after the cutoff: not usable live
+
+
+def test_country_aliases():
+    from arena.intel.site_export import _country_code
+    assert _country_code("America") == "US" and _country_code("China") == "CN" and _country_code("Narnia") is None

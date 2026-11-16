@@ -5,6 +5,9 @@
   intel/site/world.json   {as_of, countries: {ISO2: {name, lat, lon, events, conflict_share, goldstein, tone, day,
                           head_of_state, head_of_government}}, rates, fx, risk, events: [{title, day, topic, doc_id}]}
   intel/site/graph.json   {as_of, nodes: [{id, type, label, sector?}], edges: [{a, b, kind, since, value?}]}
+                          kind "mentioned_with" = company and country named in the same document (GLiNER2 spans,
+                          last 30 days, count >= 2): news co-mentions, NOT revenue exposure
+  world.json countries[ISO2].companies = [{ticker, count}] from the same co-mentions
 All values are as known at the export time (strict mode). Raw source text never leaves the archive.
 """
 import json
@@ -73,7 +76,51 @@ def _latest(obs, sid, entity=None):
     return {"value": round(float(r["value"]), 6), "day": r["obs_date"]}
 
 
-def world_json(con, T):
+ALIASES = {"america": "US", "u.s.": "US", "us": "US", "usa": "US", "united states of america": "US",
+           "the united states": "US", "u.s.a.": "US", "britain": "GB", "uk": "GB", "u.k.": "GB", "england": "GB",
+           "south korea": "KR", "korea": "KR", "taiwan": "TW", "mainland china": "CN", "prc": "CN",
+           "russian federation": "RU", "holland": "NL", "the netherlands": "NL", "uae": "AE"}
+
+
+def _country_code(span):
+    s = span.strip().lower()
+    if s in ALIASES:
+        return ALIASES[s]
+    for cc, (name, _, _) in COUNTRY.items():
+        if s == name.lower():
+            return cc
+    return None
+
+
+def co_mentions(con, T, days=30, min_count=2):
+    """{(ticker, ISO2): {"count", "since"}} for documents published in the window whose GLiNER2 reading (recorded by T)
+    names a country and links a company of the universe."""
+    lo = (date.fromisoformat(T[:10]) - timedelta(days=days)).isoformat()
+    try:
+        rows = con.execute(f"""SELECT d.published_at, d.entity_ids, r.output FROM
+                 (SELECT * FROM readings WHERE reader = 'gliner' AND recorded_at <= '{T}'
+                  QUALIFY ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY recorded_at) = 1) r
+                 JOIN (SELECT * FROM documents QUALIFY ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY recorded_at) = 1) d
+                 USING (doc_id) WHERE d.published_at >= '{lo}' AND d.published_at <= '{T}'
+                 AND r.output LIKE '%country%'""").df()
+    except Exception:   # no readings table yet
+        return {}
+    tickers = set(config.universe_tickers())
+    out = {}
+    for r in rows.itertuples():
+        o = json.loads(r.output) if isinstance(r.output, str) and r.output.startswith("{") else {}
+        ccs = {c for c in (_country_code(x) for x in o.get("spans", {}).get("country", [])) if c}
+        ents = set(o.get("linked", [])) | set(json.loads(r.entity_ids or "[]") if isinstance(r.entity_ids, str) else [])
+        cos = {e.removeprefix("co:") for e in ents if e.startswith("co:")} & tickers
+        for t in cos:
+            for cc in ccs:
+                g = out.setdefault((t, cc), {"count": 0, "since": r.published_at[:10]})
+                g["count"] += 1
+                g["since"] = min(g["since"], r.published_at[:10])
+    return {k: v for k, v in out.items() if v["count"] >= min_count}
+
+
+def world_json(con, T, mentions=None):
     obs = observations_as_of(con, T)
     facts = facts_as_of(con, T)
     countries = {}
@@ -88,6 +135,9 @@ def world_json(con, T):
                 f = facts[(facts["subject_id"] == f"country:{cc}") & (facts["predicate"] == role)]
                 if len(f):
                     c[role] = sorted(set(f["value"].dropna()))
+        cos = sorted(((t, g["count"]) for (t, k), g in (mentions or {}).items() if k == cc), key=lambda x: (-x[1], x[0]))
+        if cos:
+            c["companies"] = [{"ticker": t, "count": n} for t, n in cos[:20]]
         countries[cc] = c
     rates = {k: _latest(obs, s) for k, s in (("ust_3m", "ust:3m"), ("ust_2y", "ust:2y"), ("ust_10y", "ust:10y"),
                                               ("ust_30y", "ust:30y"), ("estr", "ecb:estr"),
@@ -106,7 +156,7 @@ def world_json(con, T):
             "events": events}
 
 
-def graph_json(con, T, days=180):
+def graph_json(con, T, days=180, mentions=None):
     nodes, edges = {}, []
     sectors = {}
     for c in config.UNIVERSE["companies"]:
@@ -142,6 +192,10 @@ def graph_json(con, T, days=180):
                                "label": g["name"]})
         edges.append({"a": pid, "b": co, "kind": kind, "since": g["since"], "count": g["n"],
                       "value_usd": round(g["value"], 2)})
+    for (t, cc), g in (mentions or {}).items():
+        cid = f"country:{cc}"
+        nodes.setdefault(cid, {"id": cid, "type": "country", "label": COUNTRY.get(cc, (cc,))[0]})
+        edges.append({"a": f"co:{t}", "b": cid, "kind": "mentioned_with", "since": g["since"], "count": g["count"]})
     return {"as_of": T, "window_days": days, "nodes": sorted(nodes.values(), key=lambda n: n["id"]),
             "edges": sorted(edges, key=lambda e: (e["kind"], e["a"], e["b"]))}
 
@@ -152,9 +206,10 @@ def run(store):
     site = store.root / "site"
     docs = docs_json(store, con, T)
     write_json(site / "docs.json", {"as_of": T, "docs": docs})
-    world = world_json(con, T)
+    mentions = co_mentions(con, T)
+    world = world_json(con, T, mentions)
     write_json(site / "world.json", world)
-    graph = graph_json(con, T)
+    graph = graph_json(con, T, mentions=mentions)
     write_json(site / "graph.json", graph)
     return {"docs": len(docs), "countries": len(world["countries"]), "nodes": len(graph["nodes"]),
-            "edges": len(graph["edges"])}
+            "edges": len(graph["edges"]), "co_mentions": len(mentions)}
