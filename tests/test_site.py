@@ -31,7 +31,8 @@ def test_site_builds_with_everything(tmp_path):
     corp = json.loads((out / "data" / "corpus.json").read_text(encoding="utf-8"))["passages"]
     ids = [c["id"] for c in corp]
     assert len(ids) == len(set(ids)) and "about" in ids and any(c["k"] == "decision" for c in corp)
-    assert all(c["d"] is None or c["d"] <= d["meta"]["updated"] for c in corp)
+    last = arch.journal_days()[-1]
+    assert all(c["d"] is None or c["d"] <= last for c in corp)
     d = _data(tmp_path / "a")
     kinds = [p["type"] for p in d["p"]]
     assert kinds.count("agent") == 20 and kinds.count("monkey") == 10
