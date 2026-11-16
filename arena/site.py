@@ -49,8 +49,10 @@ def build(archive):
     (out / "data" / "arena.json").write_text(_dump(data), encoding="utf-8", newline="\n")
     for d, sh in shards.items():
         (out / "data" / "days" / f"{d}.json").write_text(_dump(sh), encoding="utf-8", newline="\n")
-    for d, page in journal_pages(archive, days, data).items():
+    pages = journal_pages(archive, days, data)
+    for d, page in pages.items():
         (out / "data" / "journal" / f"{d}.json").write_text(_dump(page), encoding="utf-8", newline="\n")
+    (out / "data" / "corpus.json").write_text(_dump(corpus(data, pages)), encoding="utf-8", newline="\n")
     return data
 
 
@@ -350,3 +352,74 @@ def journal_pages(archive, days, data):
             "sources": {"journal": src_journal, "prices": src_prices, **({"brief": {"kind": "brief", "label": f"World Brief ({world['model']})", "as_of": world["as_of"]}} if world else {})},
         }
     return pages
+
+
+# ---------- ASK: the passages the copilot may use (and must cite) ----------
+def _pct(x, d=1):
+    return "n/a" if x is None else f"{x * 100:+.{d}f}%"
+
+
+def corpus(data, pages):
+    """Short, dated passages from the archive. The copilot retrieves from these and may only cite them;
+    a passage dated after the selected day is never used (answers 'as known then')."""
+    out = []
+    meta = data["meta"]
+    out.append({"id": "about", "d": meta.get("dayZero"), "k": "about", "title": "How the arena works",
+                "text": (f"Simulated money only. Each agent starts with EUR {meta['capital']:,.0f} on the S&P 100. Decisions are taken at night "
+                         "and filled at the next market open with real costs (FX 0.15%, slippage 0.05%, 15% dividend withholding). "
+                         "Benchmarks: the S&P 500 with dividends in euros (the water line) and equal weight. Monkeys follow the same "
+                         "rules but pick at random; the luck band is where 90% of 1,000 offline monkeys end up. Ranking score: return "
+                         "over the index per unit of extra risk. Merit badge only after enough history and beating 95% of monkeys. "
+                         f"Rules version {meta.get('rules')}, engine {meta.get('engine')}. Not investment advice.")})
+    for sp, v in data["species"].items():
+        out.append({"id": f"species:{sp}", "d": meta.get("dayZero"), "k": "species", "title": f"Species {v['label']}",
+                    "text": f"{v['label']} ({v['family']}): {v['about']}.", "ref": {"species": sp}})
+    upd = meta.get("updated")
+    for p in data["p"]:
+        name = p["name"]
+        txt = (f"{name} ({p['type']}{', species ' + data['species'].get(p['sp'] or '', {}).get('label', '') if p['sp'] else ''}). "
+               f"As of {upd}: value EUR {p['value']:,.0f}, return {_pct(p['ret'])}, versus S&P 500 {_pct(p['vsIdx'])}, "
+               f"worst drop {_pct(-p['mdd'] if p['mdd'] else 0)}, fees EUR {p['fees']:,.0f}, holdings {len(p['hold'])}, cash EUR {p['cash']:,.0f}.")
+        if p.get("pctAll") is not None:
+            txt += f" Beats {p['pctAll'] * 100:.0f}% of 1,000 random monkeys."
+        if p.get("score") is not None:
+            txt += f" Ranking score {p['score']:.2f}."
+        if p.get("dna"):
+            w = {k: v for k, v in p["dna"]["w"].items() if v}
+            txt += " DNA weights: " + ", ".join(f"{SIGNAL_LABEL.get(k, k)} {v}%" for k, v in w.items()) + f"; {p['dna'].get('picks')} stocks, review every {p['dna'].get('review')} days."
+        if p.get("copies"):
+            txt += f" Copies the management rules of {p['copies']} but picks at random."
+        if p["hold"]:
+            txt += " Top holdings: " + ", ".join(f"{h['t']} {h['w'] * 100:.0f}%" for h in p["hold"][:5]) + "."
+        out.append({"id": f"p:{p['id']}", "d": upd, "k": "participant", "title": name, "text": txt, "ref": {"open": p["id"]}})
+        for k, l in enumerate(p["log"]):
+            if l["k"] not in ("buy", "sell"):
+                continue
+            out.append({"id": f"m:{p['id']}:{l['d']}:{l['t']}:{k}", "d": l["d"], "k": "decision", "title": f"{name} {l['k']} {l['t']} on {l['d']}",
+                        "text": f"{name} {'bought' if l['k'] == 'buy' else 'sold'} {l['t']} for EUR {l['eur']:,.0f} at the open of {l['d']} "
+                                f"(decided the night of {l.get('dd') or 'n/a'}). Reason: {l.get('why') or 'n/a'}",
+                        "ref": {"open": p["id"], "date": l["d"]}})
+    for d, pg in pages.items():
+        m = pg["markets"]
+        txt = f"Day {d}: S&P 500 (USD) {_pct(m['spx'], 2)}; EUR/USD {m['eurusd']}; S&P 500 {'above' if m['above_ma'] else 'below'} its 200-day average."
+        if m["sectors"]:
+            txt += f" Best sector {m['sectors'][0]['sector']} {_pct(m['sectors'][0]['ret'], 2)}, worst {m['sectors'][-1]['sector']} {_pct(m['sectors'][-1]['ret'], 2)}."
+        if m["movers"]:
+            txt += " Biggest company moves: " + ", ".join(f"{x['t']} {_pct(x['ret'])}" for x in sorted(m["movers"], key=lambda x: -abs(x["ret"]))[:4]) + "."
+        a = pg["arena"]
+        txt += f" Arena: {a['buys']} buys and {a['sells']} sells by {a['agents']} agents at the open."
+        if a["best"]:
+            txt += f" Best agent of the day {a['best'][0]['name']} {_pct(a['best'][0]['ret'], 2)}; worst {a['worst'][0]['name']} {_pct(a['worst'][0]['ret'], 2)}."
+        out.append({"id": f"day:{d}", "d": d, "k": "day", "title": f"Journal {d}", "text": txt, "ref": {"date": d, "lens": "journal"}})
+        w = pg.get("world")
+        if w:
+            for j, it in enumerate(w["items"]):
+                out.append({"id": f"world:{d}:{j}", "d": d, "k": "world", "title": it.get("topic") or "World",
+                            "text": f"World Brief {d} ({w['model']}): {it.get('summary')}",
+                            "cites": [c.get("url") for c in it.get("cites", []) if c.get("url")][:3], "ref": {"date": d, "lens": "journal"}})
+        for j, al in enumerate(pg.get("people") or []):
+            out.append({"id": f"people:{d}:{j}", "d": d, "k": "people", "title": f"Disclosure {al.get('person_name')} {al.get('ticker')}",
+                        "text": f"{al.get('person_name')} ({al.get('role') or al.get('kind')}) disclosed a {al.get('action')} of {al.get('ticker')} "
+                                f"traded {al.get('traded_on')}, disclosed {str(al.get('disclosed_at'))[:10]} ({al.get('delay_days')} days later). A pattern worth noting, not an accusation.",
+                        "ref": {"date": d, "lens": "journal"}})
+    return {"generated": upd, "passages": out}
