@@ -9,6 +9,9 @@ import * as THREE from "three";
 import { COLOR, colorOf, type Model, type Participant } from "../data";
 import type { Tier } from "../quality";
 
+performance.mark("arena:world-chunk");
+const FLAGS = new URLSearchParams(location.search);   // test switches: ?fx=0 (no bloom), ?tx=0 (no glass)
+
 const R_AGENTS = 6.2, R_MONKEYS = 3.1, H_MAX = 3.2, R_WORLD = 9.5;
 const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -31,9 +34,9 @@ export default function World(props: Props) {
     >
       <PerformanceMonitor onDecline={props.onDegrade} flipflops={2} />
       <Scene {...props} />
-      <EffectComposer multisampling={0} enableNormalPass={false}>
+      {FLAGS.get("fx") !== "0" && <EffectComposer multisampling={0} enableNormalPass={false}>
         <Bloom mipmapBlur intensity={tier === "ultra" ? 1.15 : 0.8} luminanceThreshold={0.55} luminanceSmoothing={0.2} radius={0.75} />
-      </EffectComposer>
+      </EffectComposer>}
     </Canvas>
   );
 }
@@ -61,7 +64,8 @@ function Scene({ M, i, tier, hover, onPick, onHover, onReady }: Props) {
     const f = scene.fog as THREE.Fog | null; if (f) { f.near = d * 1.25; f.far = d * 2.8; }
   }, [size, camera, scene]);
 
-  useFrame(() => { if (!ready.current) { ready.current = true; onReady("3d"); } });
+  // first frame callback runs before the first draw; the next animation frame means it is on screen
+  useFrame(() => { if (!ready.current) { ready.current = true; onReady("3d"); requestAnimationFrame(() => { performance.mark("arena:3d-drawn"); (window as unknown as { __arenaReport?: () => void }).__arenaReport?.(); }); } });
 
   // height scale: the largest gap over the whole season maps to H_MAX, so replayed days are comparable
   const yOf = (g: number) => THREE.MathUtils.clamp(g / M.span, -1, 1) * H_MAX;
@@ -228,7 +232,7 @@ function Figure({ p, pos, y, value, tier, active, rank, capital, hot, handlers }
       <group ref={holder}>
         {p.type === "agent" ? (
           <mesh ref={body} geometry={crystalGeo} {...ev}>
-            {tier === "ultra"
+            {tier === "ultra" && FLAGS.get("tx") !== "0"
               ? <meshPhysicalMaterial color={col} emissive={col} emissiveIntensity={active ? 1.4 : 0.55} roughness={0.12} metalness={0.05}
                   transmission={0.3} thickness={0.5} ior={1.6} iridescence={0.6} iridescenceIOR={1.3} clearcoat={1} flatShading transparent opacity={0.95} />
               : <meshStandardMaterial color={col} emissive={col} emissiveIntensity={active ? 1.4 : 0.35} roughness={0.18} metalness={0.1} flatShading />}

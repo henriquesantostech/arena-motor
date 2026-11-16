@@ -11,15 +11,18 @@ import type { Action } from "./copilot";
 import { AgentCard } from "./card/AgentCard";
 import { Flat } from "./scene/Flat";
 
-const World = lazy(() => import("./scene/World"));
+// Start downloading the 3D world at once, in parallel with the data (it used to wait for the data).
+const worldChunk = hasWebGL2() && savedTier() !== "lite" ? import("./scene/World") : null;
+const World = lazy(() => worldChunk || import("./scene/World"));
 const Globe = lazy(() => import("./Globe"));
 const Network = lazy(() => import("./Network"));
 
 function report() {
   try {
     const m = (n: string) => Math.round((performance.getEntriesByName(n)[0] as PerformanceMark | undefined)?.startTime ?? -1);
-    const r = { ui: m("arena:ui"), world: m("arena:3d"), flat: m("arena:2d") };
+    const r = { ui: m("arena:ui"), world: m("arena:3d"), flat: m("arena:2d"), chunk: m("arena:world-chunk"), drawn: m("arena:3d-drawn") };
     (window as unknown as { ARENA_PERF: unknown }).ARENA_PERF = r;
+    (window as unknown as { __arenaReport: () => void }).__arenaReport = report;
     if (/[?&]perf\b/.test(location.search)) console.table(r);
   } catch { /* ignore */ }
 }
@@ -89,8 +92,9 @@ function Ready({ A }: { A: Arena }) {
 
   // the 2D view is the static first frame; it fades out once the 3D world has drawn
   const [worldUp, setWorldUp] = useState(false);
+  const [drawn, setDrawn] = useState(false);
   const onReady = useCallback((what: "3d" | "2d") => {
-    if (what === "3d") setTimeout(() => setWorldUp(true), 700);
+    if (what === "3d") { setDrawn(true); setTimeout(() => setWorldUp(true), 450); }   // the 2D first frame fades out (CSS) while the 3D fades in
     if (what === "2d" && performance.getEntriesByName("arena:2d").length) return;
     performance.mark("arena:" + what); report();
   }, []);
@@ -106,7 +110,7 @@ function Ready({ A }: { A: Arena }) {
 
   return (
     <>
-      <div id="stage" aria-hidden="true" className={lens === "arena" ? "" : lens === "today" ? "dim" : "dim deep"}>
+      <div id="stage" aria-hidden="true" className={(lens === "arena" ? "" : lens === "today" ? "dim" : "dim deep") + (drawn ? " world-up" : "")}>
         {(tier === "lite" || !worldUp) && <div className={tier === "lite" ? "" : "poster"}><Flat M={M} i={at} onPick={show} onHover={onHover} onReady={onReady} /></div>}
         {tier !== "lite" && <Suspense fallback={null}><World M={M} i={at} tier={tier} paused={!!open || help || palette} hover={hover} onPick={show} onHover={onHover} onReady={onReady} onDegrade={() => setTierState(t => t === "ultra" ? "high" : t)} /></Suspense>}
         <div className="vignette" />
