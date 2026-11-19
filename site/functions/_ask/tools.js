@@ -208,6 +208,10 @@ export async function marketSummary(C, dates) {
       + (m.sectors?.length ? ` Best sector ${m.sectors[0].sector} ${pct(m.sectors[0].ret)}, worst ${m.sectors[m.sectors.length - 1].sector} ${pct(m.sectors[m.sectors.length - 1].ret)}.` : "")
       + (mv.length ? ` Biggest risers: ${mv.slice(0, 3).map(x => `${companyName(x.t)} ${pct(x.ret, 1)}`).join(", ")}. Biggest fallers: ${mv.slice(-3).reverse().map(x => `${companyName(x.t)} ${pct(x.ret, 1)}`).join(", ")}.` : "")
       + ` Arena: ${j.arena.fills ? `${j.arena.buys} buys and ${j.arena.sells} sells` : "no trades by the agents"} at the open` + (j.arena.best?.length ? `; best agent of the day ${j.arena.best[0].name} ${pct(j.arena.best[0].ret)}, worst ${j.arena.worst[0].name} ${pct(j.arena.worst[0].ret)}` : "") + ".");
+    if (C.latest && mv.length) {
+      const own = t => C.agents.filter(p => p.hold.some(h => h.t === t)).map(p => p.name);
+      facts.push(`Who owns the day's biggest movers: ` + [...mv.slice(-3).reverse(), ...mv.slice(0, 2)].map(x => `${companyName(x.t)} (${pct(x.ret, 1)}): ${own(x.t).length ? own(x.t).join(", ") : "no agent"}`).join("; ") + ".");
+    }
     if (j.world?.headline) { world = j.world; facts.push(`World brief of ${dayName(d)} (written overnight by our own AI reader from the news; it does not prove causes): "${j.world.headline}". ` + (j.world.items || []).slice(0, 3).map(it => `${it.topic}: ${it.summary}`).join(" ")); }
     sources["d" + d] = dayChip(d);
     (j.world?.items || []).slice(0, 2).forEach((it, k) => { const c = (it.cites || [])[0]; if (c?.url) sources[`n${d}${k}`] = { label: c.title?.slice(0, 60) || it.topic, kind: "news", url: c.url, d, go: { date: d, view: "journal" } }; });
@@ -293,6 +297,7 @@ export function pendingOrders(C) {
   if (!C.latest) return res({ lead: "Waiting orders are only known for the last night.", facts: ["Pending orders exist only for the last night."] });
   const rows = C.agents.filter(p => p.next?.length);
   const facts = rows.length ? rows.flatMap(p => p.next.map(l => decisionPlain(p, l, true))) : ["No agent has orders waiting for the next open."];
+  facts.push(`Agents with a safety brake gene: ${C.agents.filter(p => p.dna?.brake).map(p => `${p.name} (keeps ${Math.round((1 - p.dna.brake) * 100)}% invested when the market is below its 200-day average; reviews every ${p.dna.review} days)`).join(", ") || "none"}. The S&P 500 is now ${C.A.day?.aboveMa200 === false ? "below" : "above"} its 200-day average; each brake agent acts at its next review.`);
   facts.push(`Agents with no waiting orders: ${C.agents.filter(p => !p.next?.length).length} of ${C.agents.length} (they act only at their own review day; reviews happen every few days, depending on each agent).`);
   return res({
     lead: rows.length ? `${rows.length} agent${rows.length > 1 ? "s have" : " has"} orders for the next market open: ${rows.map(p => p.name).join(", ")}.` : "No agent has orders for the next market open.",

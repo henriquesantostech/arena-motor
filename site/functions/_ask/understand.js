@@ -81,15 +81,16 @@ export function understand(q, C, history = [], screen = {}) {
   for (const a of agents.slice(0, 2)) {
     if (agents.length === 1 || !T(/\bcompare|vs|versus\b/)) add("get_agent", { agent: a });
     if (companies.length) companies.slice(0, 2).forEach(c => add("explain_decision", { agent: a, company: c }));
-    else if (T(/\b(why|buy|bought|sell|sold|selling|buying|trade|traded|decision|purchase|order|porque|comprou|vendeu|compró|vendió)\b/) && !T(/\bwhy (is|are) .* (winning|ahead|leading|losing|last|behind|doing)\b/)) add("explain_decision", { agent: a, date: dates[0] });
+    else if (T(/\b(why|porque|porquê|por qué|reason|explain)\b/) && T(/\b(buy|bought|sell|sold|selling|buying|trade|traded|trading|decision|purchase|order|comprou|vendeu|compró|vendió)\b/) && !T(/\bwhy (is|are) .* (winning|ahead|leading|losing|last|behind|doing)\b/)) add("explain_decision", { agent: a, date: dates[0] });
     if (T(/\b(luck|monkey|percentile|significan|skill|real|trust|sorte|suerte)\b/)) add("luck_test", { agent: a });
   }
   for (const c of companies.slice(0, 2)) if (!agents.length) add("company_story", { company: c });
-  if (species.length && !agents.length) add("species");
+  if ((species.length || /\b(group|species|kind of agents|famil(y|ies)|grupo|espécie|especie)\b/.test(s)) && !agents.length) add("species");
   if (T(/\b(win|winning|winner|lead|leader|leading|ahead|first|last|losing|loser|worst|best|rank|ranking|podium|beat|beats|beating|making money|made money|top|bottom|ganhar|perder|ganando|perdiendo|lidera|melhor|pior|mejor|peor|anyone|everyone|nobody)\b/) && !companies.length) add("ranking");
   if (T(/\b(group|species|kind of agents|family|families|type of agents|grupo|espécie|especie)\b/)) add("species");
   if (T(/\b(market|markets|s&p|index|sector|sectors|dollar|euro|fell|fall|rose|rise|crash|happened|yesterday|today|week|day|mercado|bolsa|ontem|ayer|semana)\b/) && !agents.length || dates.length && !agents.length && !companies.length) add("market_summary", { dates: range || (dates.length ? dates : null) });
   if (T(/\b(luck|monkey|monkeys|random|chance|sorte|macaco|suerte|mono)\b/) && !agents.length) add("luck_test", {});
+  if (T(/\b(brake|stop loss|stop-loss|travão)\b/)) add("pending_orders");
   if (T(/\b(tomorrow|next open|pending|will .* trade|going to (buy|sell)|orders?|selling|amanhã|mañana)\b/)) add("pending_orders");
   if (T(/\b(most agents|most popular|most owned|most held|held by the most|fees|paid in fees|total fees|commissions)\b/)) add("holdings_overview");
   if (T(/\b(evolution|eliminat|die|dies|death|graveyard|born|birth|children|child|generation|selection|weakest|survive|elimina|morre)\b/)) add("evolution");

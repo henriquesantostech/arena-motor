@@ -7,7 +7,8 @@ export const ADVICE = [
   /\b(deve|deves|devia|devias|recomendo|aconselho) (comprar|vender|investir)\b/i,
   /\b(deber[ií]a|deber[ií]as|recomiendo|aconsejo) (comprar|vender|invertir)\b/i,
 ];
-export const clean = s => RAW_ID.reduce((t, re) => t.replace(re, ""), String(s || "")).replace(/\s+([.,;:!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
+export const normalise = s => String(s || "").replace(/[‐‑]/g, "-").replace(/[‒–−](?=\s?\d)/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[    ]/g, " ");
+export const clean = s => RAW_ID.reduce((t, re) => t.replace(re, ""), normalise(s)).replace(/\s+([.,;:!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
 export const hasAdvice = s => ADVICE.some(re => re.test(s));
 
 // Numbers: every number the model writes must be in the facts it was given (rounding allowed).

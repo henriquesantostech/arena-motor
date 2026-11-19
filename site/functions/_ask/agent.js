@@ -55,7 +55,7 @@ function validGo(go, C) {
 const strip = v => { if (!v) return null; const { desc, ...x } = v; return x; };
 
 function card(C, base) {
-  const c = { v: 2, kind: base.kind, say: clean(base.say), more: (base.more || []).map(clean).filter(Boolean).slice(0, 3), visual: strip(base.visual),
+  const c = { v: 2, kind: base.kind, say: clean(base.say), more: (base.more || []).map(clean).filter(Boolean).slice(0, 3).map(m => /[.!?:)]$/.test(m) ? m : m + "."), visual: strip(base.visual),
     show: (base.show || []).map(x => ({ label: clean(x.label), go: validGo(x.go, C) })).filter(x => x.go).slice(0, 3),
     sources: (base.sources || []).map(x => ({ ...x, label: clean(x.label), go: validGo(x.go, C) || undefined })).filter(x => x.label && (x.go || x.url)).slice(0, 4),
     follow: [...new Set((base.follow || []).map(clean).filter(Boolean))].slice(0, 3), options: (base.options || []).map(clean).filter(Boolean).slice(0, 4),
@@ -80,6 +80,7 @@ function notesFor(U, C) {
   if (U.advice) n.push("The person is asking for investment advice: refuse (kind refuse), then give one useful fact.");
   if (U.vague) n.push("The question has no clear subject and the conversation does not give one: ask which one (kind clarify).");
   if (U.dates.some(d => d > C.day)) n.push(`Asked about a day after ${dayName(C.day)}: we cannot know it yet.`);
+  if ((q.match(/\b(19|20)\d\d\b/g) || []).some(y => +y < +C.dates[0].slice(0, 4))) n.push(`The arena started on ${dayName(C.dates[0])}: there is no record for that year. Say so (kind unknown) and give the start date.`);
   if (U.dates.some(d => d < C.dates[0])) n.push(`The arena started on ${dayName(C.dates[0])}; nothing exists before that.`);
   return n;
 }
@@ -153,7 +154,9 @@ export async function answer(req, { store, env, models = [], mode = "ai", budget
     return c;
   }
 
-  const kind = KINDS.includes(out.kind) ? out.kind : "answer";
+  let kind = KINDS.includes(out.kind) ? out.kind : "answer";
+  if (U.vague && kind !== "clarify" && !String(out.say || "").trim()) { kind = "clarify"; out.say = "Which one do you mean?"; out.options = [C.ranked[0]?.name, "The market", "All the agents"].filter(Boolean); }
+  if (!String(out.say || "").trim()) out.say = P.leads[0] || "I could not find that in the archive.";
   let say = String(out.say || ""), more = Array.isArray(out.more) ? out.more.map(String) : [];
   if (hasAdvice([say, ...more].join(" "))) { say = "I can't give investment advice: the agents trade simulated money, and nothing here says what anyone should buy or sell."; more = P.leads.slice(0, 1); }
   const pick = (keys, map) => (Array.isArray(keys) ? keys : [keys]).map(k => map[String(k)]).filter(Boolean);

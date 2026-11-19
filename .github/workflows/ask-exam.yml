@@ -51,7 +51,8 @@ jobs:
           ARENA_SESSION_KEY: ${{ secrets.ARENA_SESSION_KEY }}
           ARENA_LOGIN: ${{ secrets.ARENA_ALLOWED_USERS || github.repository_owner }}
         run: |
-          name="$(date -u +%Y%m%dT%H%M)-${{ inputs.system }}$( [ '${{ inputs.system }}' = v2 ] && echo "-${{ inputs.model }}" | tr ',@' '+_' )"
+          name="$(date -u +%Y%m%dT%H%M)-${{ inputs.system }}"
+          if [ "${{ inputs.system }}" = v2 ]; then name="$name-$(echo '${{ inputs.model }}' | tr ',@' '+_')"; fi
           mkdir -p archive/ask/exam_v1/runs
           extra=""; [ "${{ inputs.system }}" = baseline ] && extra="--baseline"
           node site/scripts/ask-exam.mjs archive/ask/exam_v1 --remote https://arena-agents.pages.dev --model "${{ inputs.model }}" $extra --quiet --out "archive/ask/exam_v1/runs/$name.json"
