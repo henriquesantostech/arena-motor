@@ -36,8 +36,19 @@ def main(argv=None):
     ap.add_argument("--day-zero", default="2024-01-31")
     ap.add_argument("--until")
     ap.add_argument("--worlds", type=int, default=evolution.RULES["null_evolution"]["worlds"])
+    ap.add_argument("--replay", action="store_true", help="replay every evaluation night and the night after")
+    ap.add_argument("--reports-only", action="store_true", help="skip fetching and processing")
     a = ap.parse_args(argv)
     archive = Archive(a.archive)
+    if a.replay:
+        rules_from(archive.cfg["day_zero"])
+        from arena.night import replay
+        days = archive.journal_days()
+        evals = [d for d in days if "evolution" in archive.read_journal(d)]
+        targets = sorted(set(evals + [days[days.index(d) + 1] for d in evals if days.index(d) + 1 < len(days)]))
+        bad = [d for d in targets if not replay(archive, d)["identical"]]
+        print(f"replayed {len(targets)} nights around {len(evals)} evaluations: " + ("all identical" if not bad else f"DIFFERENT {bad}"))
+        return 1 if bad else 0
     if not (archive.root / "arena.json").exists():
         archive.write_cfg({
             "name": "Arena of Agents: evolution rehearsal", "mode": "trial", "rehearsal": True,
@@ -51,7 +62,7 @@ def main(argv=None):
     day_zero = archive.cfg["day_zero"]
     rules_from(day_zero)
     t = time.time()
-    done = process(archive, a.until, on_done=lambda d, p: print(d, "evolution" if "evolution" in p else "", flush=True)
+    done = [] if a.reports_only else process(archive, a.until, on_done=lambda d, p: print(d, "evolution" if "evolution" in p else "", flush=True)
                    if "evolution" in p or d.endswith("-01") else None)
     print(f"{len(done)} nights processed in {time.time() - t:.0f}s")
     t = time.time()

@@ -60,8 +60,18 @@ def indicators(name, series, index_series, part, monkey_series, year):
     }
 
 
-def label(ind, monkey_scores):
-    """Merit badge (design 6.4): 6 months, beats the index and scores above 95% of the monkeys."""
+def label(ind, monkey_scores, merit_row=None):
+    """Merit badge. From rules 1.2 (2026-11-17) badge v2 (rules/merit.json): 12 months, DSR >= 0.95, above the
+    p95 of the best of 1,000 monkeys and beats the S&P 500 net of costs. Pass the agent's row of the archive's
+    merit/report.json as `merit_row`; without it nobody can earn the badge. A rehearsal never earns it.
+    Badge v1 could not be earned before 126 days of life, so switching now changes nothing already shown."""
+    if not merit_row:
+        return "provisional"
+    return "merit" if merit_row.get("badge") == "merit" else "provisional"
+
+
+def _label_v1(ind, monkey_scores):
+    """Merit badge v1 (design 6.4): 6 months, beats the index and scores above 95% of the monkeys."""
     if ind["days"] < M["merit_min_days"]:
         return "provisional"
     if ind["vs_index"] is None or ind["vs_index"] <= 0 or ind["score"] is None:

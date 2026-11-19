@@ -59,7 +59,7 @@ def simulate(archive, n=N_MONKEYS):
     """Returns a DataFrame indexed by date with one column per monkey."""
     agents = _agents()
     days = archive.journal_days()
-    monkeys, rows, last = None, [], {}
+    monkeys, rows, last, occupants = None, [], {}, {}
     for d in days:
         j = archive.read_journal(d)
         view = View(archive, d, j["inputs"]["cutoff"])
@@ -86,6 +86,14 @@ def simulate(archive, n=N_MONKEYS):
                         m["pending"] = [o for o in m["pending"] if o["ticker"] != t]
                         if t in m["positions"] and price:
                             sell(m, t, m["positions"][t]["shares"], price, rate, d)
+            # a seat with a newborn agent (evolution): its mirroring monkeys start again with fresh capital too
+            for slot, name in seats(j).items():
+                if occupants.get(slot) not in (None, name):
+                    for i in range(slot, n, len(agents)):
+                        monkeys[i] = new_participant({"name": f"m{i:04d}", "type": "offline_monkey",
+                                                      "species": "Monkey", "dna": None,
+                                                      "copies_management_of": name}, d)
+        occupants = seats(j)
         values = [_value(m, closes, last, rate) for m in monkeys]
         rows.append([d] + values)
         # decide tonight's moves, mirroring each agent's orders

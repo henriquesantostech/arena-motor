@@ -148,6 +148,17 @@ def test_offline_monkeys_null_evolution_and_merit_reports(evolved):
         last = archive.read_journal(done[-1])
         alive = sorted(n for n, p in last["state"]["participants"].items() if p["type"] == "agent")
         assert sorted(m["agents"]) == alive          # monkeys follow the seats, newborns included
+        # the monkeys mirroring a seat with a newborn start again with fresh capital on its birth night
+        import pandas as pd
+        vals = pd.read_csv(archive.root / "monkeys" / "values.csv", dtype={"date": str}).set_index("date")
+        first_eval = next(d for d in done if "evolution" in archive.read_journal(d))
+        slot = archive.read_journal(first_eval)["evolution"]["births"][0]["slot"]
+        cols = [c for i, c in enumerate(vals.columns) if i % 20 == slot]
+        assert (vals.loc[first_eval, cols] == config.CAPITAL).all()
+        other = [c for i, c in enumerate(vals.columns) if i % 20 not in
+                 {b["slot"] for b in archive.read_journal(first_eval)["evolution"]["births"]}]
+        assert (vals.loc[first_eval, other] != config.CAPITAL).any()
+        assert monkeys.run(archive, n=60)["replay_identical"]
         r = evolution.run(archive, worlds=2)
         assert r["evaluations"] >= 3 and r["agents_ever"] == 20 + len(last["state"]["graveyard"])
         null = json.loads((archive.root / "evolution" / "null.json").read_text(encoding="utf-8"))
@@ -165,3 +176,11 @@ def test_offline_monkeys_null_evolution_and_merit_reports(evolved):
         old = [a for a in rep["agents"].values() if a["days"] >= 60]
         assert old and all(a["dsr"] is not None and a["alpha"] and a["best_of_monkeys"] for a in old)
         assert all(a["badge"] == "provisional" for a in rep["agents"].values())   # nobody has 12 months
+
+
+def test_label_uses_badge_v2_from_the_merit_report():
+    from arena.metrics import label
+    ind = {"days": 300, "vs_index": 0.1, "score": 2.0}
+    assert label(ind, [0.0] * 100) == "provisional"
+    assert label(ind, [0.0] * 100, {"badge": "merit"}) == "merit"
+    assert label(ind, [0.0] * 100, {"badge": "rehearsal"}) == "provisional"
