@@ -55,7 +55,8 @@
    "version": "1",
    "query_prefix": "task: search result | query: ",
    "doc_prefix": "title: none | text: ",
-   "exam": "exam v1: same-topic 47.5% (2026-11-14, -16, -19); sits exam v2"
+   "exam": "exam v1 same-topic 47.5% (test retired for retrieval); exam v2 retrieval 2026-11-19: recall@1 0.925, recall@3 1.0, 0.04 s/item",
+   "admitted": "exam v2, 2026-11-19 (kept: ties the best candidate and is 10x faster)"
   },
   "llm": {
    "role": "structured reading of the triaged items (event type, companies affected, direction, magnitude, horizon)",
@@ -91,7 +92,7 @@
    "pooling": "last",
    "doc_prefix": "",
    "version": "c2",
-   "exam": "exam v1, 2026-11-16: same-topic 35% (< 70%); exam v1 retired for retrieval, sits exam v2",
+   "exam": "exam v2, 2026-11-19: recall@1 0.875, recall@3 0.975, 0.13 s/item: passes, not better than the pinned reader",
    "query_prefix": "Instruct: Given a question about financial or world news, retrieve the news item that answers it\nQuery: "
   },
   "embed-qwen3-4b": {
@@ -107,7 +108,7 @@
    "doc_prefix": "",
    "version": "c2",
    "query_prefix": "Instruct: Given a question about financial or world news, retrieve the news item that answers it\nQuery: ",
-   "exam": "exam v1, 2026-11-19: same-topic 35%; sits exam v2"
+   "exam": "exam v2, 2026-11-19: recall@1 0.925, recall@3 1.0, 0.40 s/item: passes, ties the pinned reader, 10x slower"
   }
  },
  "retired": {
