@@ -37,11 +37,14 @@ SCHEMAS = {
     "signals": ["date", "ticker", "signal_id", "value", "published_at", "recorded_at"],
     # computed after the fact from backfilled, PIT-trusted data: technical rehearsal only, never evidence
     "signals_rehearsal": ["date", "ticker", "signal_id", "value", "published_at", "recorded_at"],
+    # word-count vectors of 10-K/10-Q main documents (sec_text); the text itself stays at its permanent SEC URL
+    "text_vectors": ["doc_id", "entity_id", "form", "period", "published_at", "recorded_at", "n_words", "text_sha",
+                     "url", "vector"],
     "alerts": ["alert_id", "kind", "person_id", "person_name", "role", "ticker", "action", "size_low",
                "size_high", "traded_on", "disclosed_at", "delay_days", "recorded_at", "source_id",
                "source_hash", "note"],
 }
-NUMERIC = {"bytes", "value_num", "value", "score", "confidence", "size_low", "size_high", "delay_days"}
+NUMERIC = {"n_words", "bytes", "value_num", "value", "score", "confidence", "size_low", "size_high", "delay_days"}
 # "value" is numeric in observations and signals, text in facts.
 TEXT_VALUE_TABLES = {"facts"}
 

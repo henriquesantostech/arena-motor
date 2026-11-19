@@ -211,5 +211,7 @@ def run(store):
     write_json(site / "world.json", world)
     graph = graph_json(con, T, mentions=mentions)
     write_json(site / "graph.json", graph)
-    return {"docs": len(docs), "countries": len(world["countries"]), "nodes": len(graph["nodes"]),
+    from .moves import run as moves_run
+    mv = moves_run(store)
+    return {"moves": mv, "docs": len(docs), "countries": len(world["countries"]), "nodes": len(graph["nodes"]),
             "edges": len(graph["edges"]), "co_mentions": len(mentions)}

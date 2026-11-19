@@ -69,6 +69,37 @@ def _calendar(ctx, key):
     return ctx.store.add("facts", rows)
 
 
+HISTORY_RELEASES = {10: "CPI", 50: "Employment Situation", 101: "FOMC Press Release"}
+
+
+def _release_history(ctx, key):
+    """Past dates on which CPI, payrolls and FOMC statements were actually released (with data), loaded once and
+    then refreshed for the last 40 days each night. Used for the macro event-day flag."""
+    done = ctx.store.state("fred_release_history", {})
+    start = "2023-01-01" if not done else (date.fromisoformat(ctx.now[:10]) - timedelta(days=40)).isoformat()
+    from ..wkb import fact
+    have = set()
+    if ctx.store.has("facts"):
+        f = ctx.store.read("facts", "predicate = 'release_held'")
+        have = set(zip(f["value"], f["valid_from"]))
+    rows = []
+    for rid, name in HISTORY_RELEASES.items():
+        r, sha, _ = http.fetch(ctx.store, SOURCE_ID, f"{API}release/dates",
+                               params={"api_key": key, "file_type": "json", "release_id": str(rid),
+                                       "realtime_start": start, "realtime_end": ctx.now[:10],
+                                       "include_release_dates_with_no_data": "false", "sort_order": "asc",
+                                       "limit": "1000"})
+        for d in r.json().get("release_dates", []):
+            v = f"{rid}:{name}"
+            if (v, d["date"]) in have or d["date"] < start:
+                continue
+            rows.append(fact("org:FRED", "release_held", value=v, valid_from=d["date"],
+                             published_at=ny_to_utc(d["date"], "08:30:00"), source_id=SOURCE_ID, source_hash=sha,
+                             extractor="fred.release_history", extractor_version="1", recorded_at=ctx.now))
+    ctx.store.set_state("fred_release_history", {"loaded": True, "day": ctx.now[:10]})
+    return ctx.store.add("facts", rows)
+
+
 def ingest(ctx):
     key = ctx.key("FRED_KEY")
     start = ctx.backfill_from or (date.fromisoformat(ctx.now[:10]) - timedelta(days=10)).isoformat()
@@ -78,7 +109,7 @@ def ingest(ctx):
             break
         rows, sha = _obs(ctx, key, sid, start)
         n += _store_vintages(ctx, rows, sha)
-    return {"observations": n, "calendar": _calendar(ctx, key)}
+    return {"observations": n, "calendar": _calendar(ctx, key), "release_history": _release_history(ctx, key)}
 
 
 def backfill(ctx):

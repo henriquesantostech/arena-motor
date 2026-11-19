@@ -87,7 +87,49 @@ def summarize(ics, horizon, expected_sign, gates):
     return res
 
 
-LIVE_ONLY = {"intel.llm_impact_5d", "intel.brief_sector_tailwind"}   # see shadow.REHEARSAL_READERS
+LIVE_ONLY = {"intel.llm_impact_5d", "intel.brief_sector_tailwind", "intel.guidance_8k_llm_10d"}
+
+
+def market_flag_test(store, archive_root, gates):
+    """Market-level risk flag (intel.macro_event_day): mean absolute equal-weight universe return on flagged trading
+    days versus the other days. Live = dates scheduled (recorded) before the day; rehearsal = dates loaded later."""
+    from .wkb import decision_cutoff
+    a = Archive(archive_root)
+    p = a.read("prices")
+    p = p[p["ticker"].isin(config.universe_tickers())]
+    close = p.pivot_table(index="date", columns="ticker", values="close", aggfunc="last").astype(float).sort_index()
+    absret = close.pct_change(fill_method=None).mean(axis=1).abs().dropna()
+    con = store.connect()
+    try:
+        f = con.execute("""SELECT valid_from, MIN(recorded_at) AS rec FROM facts
+                           WHERE (predicate IN ('release_held', 'release_scheduled') AND split_part(value, ':', 1) IN ('10', '50'))
+                              OR (predicate = 'release_held' AND split_part(value, ':', 1) = '101')
+                           GROUP BY 1""").df()
+    except Exception:
+        f = pd.DataFrame(columns=["valid_from", "rec"])
+    out = {}
+    for mode in ("live", "rehearsal"):
+        if mode == "live":
+            days = {r.valid_from for r in f.itertuples() if r.rec <= decision_cutoff(r.valid_from)}
+        else:
+            days = set(f["valid_from"])
+        flagged = absret[absret.index.isin(days)]
+        other = absret[~absret.index.isin(days)]
+        if mode == "live":   # live comparison only over the period with live flags
+            start = min(days) if days else None
+            other = other[other.index >= start] if start else other.iloc[0:0]
+        if len(flagged) < 2 or len(other) < 2:
+            out[mode] = {"n_days": int(len(flagged)), "status": "no observations yet"}
+            continue
+        t = (flagged.mean() - other.mean()) / np.sqrt(flagged.var(ddof=1) / len(flagged) + other.var(ddof=1) / len(other))
+        ratio = float(flagged.mean() / other.mean()) if other.mean() > 0 else None
+        ok = len(flagged) >= 20 and ratio is not None and ratio > 1 and t > gates["min_newey_west_t"]
+        out[mode] = {"n_days": int(len(flagged)), "other_days": int(len(other)),
+                     "mean_abs_return_flagged": round(float(flagged.mean()), 5),
+                     "mean_abs_return_other": round(float(other.mean()), 5),
+                     "ratio": None if ratio is None else round(ratio, 3), "t": round(float(t), 2),
+                     "status": "candidate for review" if ok else "shadow"}
+    return out   # see shadow.REHEARSAL_READERS
 
 
 def report(store, archive_root=None):
@@ -102,14 +144,22 @@ def report(store, archive_root=None):
     fwd_cache = {}
     for p in preregistered():
         h = p["horizon_days"]
-        if h not in fwd_cache:
-            fwd_cache[h] = forward_returns(archive_root, h)
-        s = sig[sig["signal_id"] == p["id"]] if len(sig) else sig
+        target = p.get("target", "return")
         entry = {"family": p["family"], "expected_sign": p["expected_sign"], "horizon_days": h,
-                 "registered_on": p["registered_on"]}
+                 "registered_on": p["registered_on"], "target": target}
+        if target == "market_flag":
+            entry.update(market_flag_test(store, archive_root, gates))
+            out["signals"][p["id"]] = entry
+            continue
+        key = (h, target)
+        if key not in fwd_cache:
+            fwd_cache[key] = forward_returns(archive_root, h)
+            if target == "abs_return":
+                fwd_cache[key] = fwd_cache[key].abs()
+        s = sig[sig["signal_id"] == p["id"]] if len(sig) else sig
         for mode in ("live", "rehearsal"):
             part = s[s["live"] == (mode == "live")] if len(s) else s
-            entry[mode] = summarize(ic_series(part, fwd_cache[h]) if len(part) else pd.Series(dtype=float),
+            entry[mode] = summarize(ic_series(part, fwd_cache[key]) if len(part) else pd.Series(dtype=float),
                                     h, p["expected_sign"], gates)
         if p["id"] in LIVE_ONLY:
             entry["rehearsal"] = {"n_days": 0, "status": "live only: the model may know later events"}
@@ -118,4 +168,4 @@ def report(store, archive_root=None):
     path = store.root / "lab" / "ic_provisional.json"
     write_json(path, out)
     return {"signals": {k: {"live_days": v["live"]["n_days"], "rehearsal_days": v["rehearsal"]["n_days"],
-                            "rehearsal_t": v["rehearsal"].get("newey_west_t")} for k, v in out["signals"].items()}}
+                            "rehearsal_t": v["rehearsal"].get("newey_west_t", v["rehearsal"].get("t"))} for k, v in out["signals"].items()}}

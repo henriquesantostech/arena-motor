@@ -212,7 +212,8 @@ def test_rehearsal_uses_only_readers_without_future_knowledge():
     empty = pd.DataFrame(columns=["subject_id", "predicate", "object_id", "value", "valid_from", "published_at",
                                   "recorded_at", "person_id", "ticker", "action", "note", "disclosed_at",
                                   "entity_id", "obs_date"])
-    inp = SimpleNamespace(alerts=empty, facts=empty, views=empty, xbrl=empty, readings=rd, close=pd.DataFrame())
+    inp = SimpleNamespace(alerts=empty, facts=empty, views=empty, xbrl=empty, readings=rd, close=pd.DataFrame(),
+                          text_sim=None, results=empty, reaction={}, macro_days=set())
     cut = "2026-01-07T04:59:59Z"
     reh = {r["signal_id"] for r in compute_day(inp, "2026-01-06", ["AAPL"], cut, rehearsal=True)}
     live = {r["signal_id"] for r in compute_day(inp, "2026-01-06", ["AAPL"], cut)}

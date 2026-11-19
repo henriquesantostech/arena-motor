@@ -98,7 +98,8 @@ class Inputs:
         self.xbrl = x
         # readings joined to their documents; usable from max(document published, reading recorded)
         self.readings = con.execute("""
-            SELECT r.reader, r.score, r.output, d.entity_ids, d.published_at AS doc_published,
+            SELECT r.reader, r.score, r.output, d.entity_ids, d.kind AS doc_kind, d.extra AS doc_extra,
+                   d.published_at AS doc_published,
                    GREATEST(d.published_at, r.recorded_at) AS usable_at
             FROM (SELECT * FROM readings WHERE reader IN ('finbert', 'llm')
                   QUALIFY ROW_NUMBER() OVER (PARTITION BY doc_id, reader ORDER BY recorded_at) = 1) r
@@ -106,6 +107,83 @@ class Inputs:
             USING (doc_id)""").df()
         p = Archive(archive_root).read("prices")
         self.close = p.pivot_table(index="date", columns="ticker", values="close", aggfunc="last")
+        self.text_sim = con.execute("""SELECT entity_id, obs_date, value, published_at FROM observations
+                                       WHERE series_id = 'text:lazy_sim'""").df() if store.has("observations") else None
+        # results releases (8-K item 2.02) with their price reaction, and the macro calendar
+        self.results = self.facts[(self.facts["predicate"] == "8k_item") & (self.facts["value"] == "2.02")]
+        self.reaction = announcement_reactions(self.results, self.close)
+        self.macro_days = macro_calendar(con)
+
+
+def announcement_reactions(results, close):
+    """{ticker: [(effective day E, abnormal return)]}: stock minus equal-weight universe return from the close before
+    the 8-K item 2.02 dissemination to the close of the first full trading day after it."""
+    from .wkb import NEW_YORK
+    from datetime import datetime
+    out = {}
+    if close is None or not len(close) or not len(results):
+        return out
+    days = list(close.index)
+    pos = {d: i for i, d in enumerate(days)}
+    rets = close.pct_change(fill_method=None)
+    mkt = rets.mean(axis=1)
+    for r in results.itertuples():
+        t = r.subject_id.removeprefix("co:")
+        if t not in close.columns:
+            continue
+        ny = datetime.fromisoformat(r.published_at.replace("Z", "+00:00")).astimezone(NEW_YORK)
+        d = ny.date().isoformat()
+        # before the open: that day's session is the first full one; otherwise the next session
+        nxt = [x for x in days if x > d] if ny.hour >= 9 and not (ny.hour == 9 and ny.minute < 30) else \
+            [x for x in days if x >= d]
+        if not nxt:
+            continue
+        e = nxt[0]
+        i = pos[e]
+        if i == 0:
+            continue
+        # reaction from the close before the release to the close of E
+        first = [x for x in days if x <= d and x < e]
+        start = first[-1] if first else days[i - 1]
+        a, b = close.at[start, t], close.at[e, t]
+        if not (a == a and b == b and a > 0):
+            continue
+        stock = b / a - 1
+        m = float(np.prod(1 + mkt.iloc[pos[start] + 1:i + 1].fillna(0)) - 1)
+        out.setdefault(t, []).append((e, stock - m))
+    for t in out:
+        out[t].sort()
+    return out
+
+
+MACRO_RELEASES = {"10", "50", "101"}   # FRED: CPI, Employment Situation, FOMC press release
+
+
+def macro_calendar(con):
+    """Trading-calendar dates of US CPI, payrolls and FOMC statements (FRED release calendar)."""
+    try:
+        f = con.execute("""SELECT DISTINCT valid_from FROM facts WHERE predicate IN ('release_held', 'release_scheduled')
+                           AND split_part(value, ':', 1) IN ('10', '50')
+                           UNION SELECT DISTINCT valid_from FROM facts WHERE predicate = 'release_held'
+                           AND split_part(value, ':', 1) = '101'""").df()
+    except Exception:
+        return set()
+    return set(f["valid_from"].dropna())
+
+
+def _yoy(rows, lo=330, hi=400):
+    """(latest value, value of the row whose obs_date is lo-hi days earlier, closest to 365) or None."""
+    if not len(rows):
+        return None
+    rows = rows.sort_values("obs_date")
+    y = rows.iloc[-1]
+    end = date.fromisoformat(y["obs_date"])
+    best = None
+    for r in rows.itertuples():
+        gap = (end - date.fromisoformat(r.obs_date)).days
+        if lo <= gap <= hi and (best is None or abs(gap - 365) < abs(best[0] - 365)):
+            best = (gap, r.value)
+    return (float(y["value"]), float(best[1])) if best else None
 
 
 # Rehearsal (days whose cutoff passed before we ran) may trust a document's publication date for readers that cannot
@@ -193,6 +271,81 @@ def compute_day(inp, day, tickers, cut, rehearsal=False):
             out["intel.news_sentiment_3d"] = {t: float(np.mean(v)) for t, v in sent.items() if t in tickers}
         if impact:
             out["intel.llm_impact_5d"] = {t: impact.get(t, 0.0) for t in tickers}
+    # --- Experience v3 section 7 (pre-registered 2026-11-19) ---
+    # Lazy Prices: year-on-year 10-K/10-Q text similarity, carried until the next filing
+    if inp.text_sim is not None and len(inp.text_sim):
+        ts = inp.text_sim[inp.text_sim["published_at"] <= cut]
+        if len(ts):
+            last = ts.sort_values(["published_at", "obs_date"]).groupby("entity_id").tail(1)
+            sim = {r.entity_id.removeprefix("co:"): float(r.value) for r in last.itertuples()}
+            out["intel.lazy_prices_similarity"] = {t: sim[t] for t in tickers if t in sim}
+    # management changes: 8-K item 5.02 in the last 30 days
+    if len(inp.facts[inp.facts["predicate"] == "8k_item"]):
+        lo30 = decision_cutoff((date.fromisoformat(day) - timedelta(days=30)).isoformat())
+        m = inp.facts[(inp.facts["predicate"] == "8k_item") & (inp.facts["value"] == "5.02") &
+                      (inp.facts["published_at"] <= cut) & (inp.facts["published_at"] > lo30)]
+        n502 = m.groupby("subject_id").size()
+        out["intel.mgmt_change_8k_30d"] = {t: float(n502.get(f"co:{t}", 0)) for t in tickers}
+    # capital return: share count change, buyback yield, dividend change
+    if len(x):
+        price = inp.close.loc[:day].iloc[-1] if len(inp.close.loc[:day]) else pd.Series(dtype=float)
+        sc, by, dv = {}, {}, {}
+        for eid, g in x.groupby("entity_id"):
+            t = eid.removeprefix("co:")
+            sh = g[g["concept"] == "shares_outstanding"]
+            yy = _yoy(sh)
+            if yy and yy[0] > 0 and yy[1] > 0:
+                sc[t] = math.log(yy[0] / yy[1])
+            bb = _ytd_ttm(g[g["concept"] == "buyback"], day)
+            if bb is not None and len(sh) and t in price.index and pd.notna(price[t]) and price[t] > 0:
+                mcap = float(sh.sort_values("obs_date").iloc[-1]["value"]) * float(price[t])
+                if mcap > 0:
+                    by[t] = bb / mcap
+            dq = g[(g["concept"] == "dps_declared") & (g["dur"] == "3m")]
+            yd = _yoy(dq, 70 + 260, 100 + 300)
+            if yd and yd[1] > 0:
+                dv[t] = yd[0] / yd[1] - 1
+        for sid, d in (("intel.share_count_change_yoy", sc), ("intel.buyback_yield_ttm", by),
+                       ("intel.dividend_change_yoy", dv)):
+            if d:
+                out[sid] = {t: d[t] for t in tickers if t in d}
+    # results calendar risk and announcement reaction
+    if len(inp.results):
+        res = inp.results[inp.results["published_at"] <= cut]
+        last = res.sort_values("published_at").groupby("subject_id").tail(1)
+        fut = [d for d in inp.close.index if d > day][:10]
+        horizon_end = fut[-1] if len(fut) == 10 else (date.fromisoformat(day) + timedelta(days=14)).isoformat()
+        flag = {}
+        for r in last.itertuples():
+            nxt = (date.fromisoformat(r.published_at[:10]) + timedelta(days=91)).isoformat()
+            late = (date.fromisoformat(day) - date.fromisoformat(nxt)).days
+            flag[r.subject_id.removeprefix("co:")] = 1.0 if (nxt <= horizon_end and late <= 10) else 0.0
+        if flag:
+            out["intel.earnings_within_10d"] = {t: flag.get(t, 0.0) for t in tickers if t in flag}
+        closed = [d for d in inp.close.index if decision_cutoff(d) <= cut]   # sessions whose close is known
+        if closed:
+            window = set(closed[-60:])
+            rx = {}
+            for t, evs in inp.reaction.items():
+                for e, v in evs:          # sorted by day: the latest release in the window wins
+                    if e in window:
+                        rx[t] = v
+            if rx:
+                out["intel.announcement_reaction_60d"] = {t: rx[t] for t in tickers if t in rx}
+    # 8-K guidance tone read by the LLM (live only: the rehearsal path drops LLM readings)
+    rdl = rd[rd["reader"] == "llm"] if len(rd) else rd
+    if len(rdl):
+        lo10 = decision_cutoff((date.fromisoformat(day) - timedelta(days=10)).isoformat())
+        tone = {}
+        for r in rdl[(rdl["doc_published"] > lo10) & rdl["doc_kind"].astype(str).str.startswith("filing:8-K")].itertuples():
+            items = set((json.loads(r.doc_extra) if isinstance(r.doc_extra, str) else {}).get("items", []))
+            if not items & {"2.02", "7.01", "8.01"} or not (r.output and r.output.startswith("{")):
+                continue
+            for c in json.loads(r.output).get("companies", []):
+                if c.get("ticker") in tickers:
+                    tone[c["ticker"]] = tone.get(c["ticker"], 0.0) + c.get("direction", 0) * c.get("magnitude", 0)
+        if tone:
+            out["intel.guidance_8k_llm_10d"] = {t: tone.get(t, 0.0) for t in tickers}
     rows = []
     for sid, vals in out.items():
         for t, val in vals.items():

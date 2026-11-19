@@ -101,17 +101,30 @@ def _news(ctx):
     names = []
     for c in h.universe():
         from ..entities import EXTRA_ALIASES, base_name
-        names.append((EXTRA_ALIASES.get(c["ticker"]) or [base_name(c["name"])])[0])
+        x = (EXTRA_ALIASES.get(c["ticker"]) or [base_name(c["name"])])[0]
+        names.append(x if len(x) >= 4 else c["name"])   # the DOC API refuses keywords that are too short
     names = sorted(set(names))
-    n = 0
-    for i in range(0, len(names), 20):
+    # the DOC API rejects long queries ("Your query was too short or too long"): small OR groups under 200 chars
+    groups, cur = [], []
+    for x in names:
+        if cur and (len(cur) >= 6 or len(" OR ".join(f'"{y}"' for y in cur + [x])) > 170):
+            groups.append(cur)
+            cur = []
+        cur.append(x)
+    if cur:
+        groups.append(cur)
+    n = rejected = 0
+    for grp in groups:
         if ctx.out_of_time():
             break
-        q = "(" + " OR ".join(f'"{x}"' for x in names[i:i + 20]) + ") sourcelang:english"
+        q = "(" + " OR ".join(f'"{x}"' for x in grp) + ") sourcelang:english"
         try:
             r = http.get(DOC, params={"query": q, "mode": "artlist", "format": "json", "maxrecords": "250",
                                       "timespan": "1d", "sort": "datedesc"}, tries=1, timeout=30)
             sha, path = ctx.store.put_raw(SOURCE_ID, DOC, r.content, r.headers.get("Content-Type", ""))
+            if not r.content.lstrip().startswith(b"{"):
+                rejected += 1        # plain-text refusal (query or rate): counted in the night report
+                continue
             arts = r.json().get("articles", [])
         except http.FetchError:
             break           # throttled: no retries tonight, the rest of the night must not wait
@@ -134,7 +147,7 @@ def _news(ctx):
         fresh = [d for d in docs if d["doc_id"] not in seen_ids]
         ctx.store.set_state("gdelt_news_seen", sorted(seen_ids | {d["doc_id"] for d in fresh})[-5000:])
         n += ctx.store.add("documents", fresh)
-    return n
+    return {"documents": n, "queries": len(groups), "rejected": rejected}
 
 
 def ingest(ctx):

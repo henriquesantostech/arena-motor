@@ -359,6 +359,26 @@
    "pit_trusted": false,
    "terms_checked_on": "2026-11-14",
    "credentials": "none"
+  },
+  {
+   "id": "sec_text",
+   "provider": "U.S. SEC EDGAR (submissions JSON, 10-K/10-Q main documents)",
+   "adapter": "arena/intel/sources/sec_text.py",
+   "data": "word-count vectors of 10-K/10-Q main documents and the year-on-year text similarity (Lazy Prices)",
+   "pit_field": "acceptanceDateTime -> dissemination time (same rule as sec_edgar)",
+   "pit_trusted": true,
+   "rate_limit": "max 10 requests/s with a declared User-Agent (sequential requests)",
+   "terms": "Public U.S. government information; SEC fair access policy (declared User-Agent, rate limit).",
+   "terms_url": "https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data",
+   "license": "Public domain (U.S. government work)",
+   "use": "any",
+   "redistribution": "allowed",
+   "credentials": "none",
+   "budget_s": 600,
+   "enabled": true,
+   "env_key": null,
+   "terms_checked_on": "2026-11-19",
+   "storage": "by reference: permanent SEC URL + SHA-256; only the word-count vector is kept"
   }
  ]
 }

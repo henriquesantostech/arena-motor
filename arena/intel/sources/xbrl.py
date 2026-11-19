@@ -36,6 +36,8 @@ CONCEPTS = [
     ("us-gaap", "LongTermDebt", "long_term_debt"),
     ("us-gaap", "CashAndCashEquivalentsAtCarryingValue", "cash"),
     ("dei", "EntityCommonStockSharesOutstanding", "shares_outstanding"),
+    ("us-gaap", "PaymentsForRepurchaseOfCommonStock", "buyback"),
+    ("us-gaap", "CommonStockDividendsPerShareDeclared", "dps_declared"),
 ]
 FORMS = {"10-K", "10-Q", "10-K/A", "10-Q/A", "20-F", "40-F"}
 
@@ -64,10 +66,10 @@ def _acceptance_times(ctx):
     return {d.doc_id.removeprefix("sec:"): d.published_at for d in df.itertuples()}
 
 
-def refresh(ctx, ticker, cik, acc_times, cursor):
+def refresh(ctx, ticker, cik, acc_times, cursor, only=None):
     rows, newest, have = [], cursor, set()
     for tax, concept, short in CONCEPTS:
-        if short in have or ctx.out_of_time():
+        if short in have or ctx.out_of_time() or (only and short not in only):
             continue
         url = f"https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/{tax}/{concept}.json"
         r, sha, _ = http.fetch(ctx.store, SOURCE_ID, url, ok_404=True)
@@ -113,6 +115,19 @@ def ingest(ctx):
             (c["ticker"] in due or c["ticker"] not in cursors or ctx.backfill_from)]
     acc_times = _acceptance_times(ctx)
     n = done = 0
+    # concepts added after a company's first load get their whole history once (cursor ignored for them)
+    seen = ctx.store.state("xbrl_concepts_loaded", {})
+    shorts = sorted({c[2] for c in CONCEPTS})
+    for t in [c["ticker"] for c in http.universe() if ciks.get(c["ticker"]) and c["ticker"] in cursors]:
+        missing = [c for c in shorts if c not in seen.get(t, [])] if t in seen else             [c for c in ("buyback", "dps_declared")]
+        if not missing:
+            continue
+        if ctx.out_of_time():
+            break
+        k, _ = refresh(ctx, t, ciks[t], acc_times, None, only=set(missing))
+        n += k
+        seen[t] = shorts
+    ctx.store.set_state("xbrl_concepts_loaded", seen)
     for t in todo:
         if ctx.out_of_time():
             break
@@ -120,8 +135,10 @@ def ingest(ctx):
         n += k
         done += 1
         cursors[t] = newest or cursors.get(t) or "0000-00-00"
+        seen[t] = shorts
         due.discard(t)
     ctx.store.set_state("xbrl_cursor", cursors)
+    ctx.store.set_state("xbrl_concepts_loaded", seen)
     ctx.store.set_state("xbrl_due", sorted(due))
     return {"companies": done, "observations": n, "pending": len(todo) - done}
 
