@@ -1,0 +1,13 @@
+{
+ "version": "ask-1",
+ "kind": "ask",
+ "frozen_on": "2026-11-19",
+ "note": "Exam for the Ask v2 copilot (Experience v3 section 6). The questions, graded reference answers and the frozen data snapshot live in the private archive (ask/exam_v1/) because they quote the private site's results. Their fingerprints are published here before any model was run on them; the archive commit is 'Ask exam v1 ... frozen before any model run'. Never edit: a new exam is a new file.",
+ "sha256": {
+  "ask/exam_v1/exam.json": "5de8dd0984c6fbf6c204205a10fbb2543bcbf7ceda4f9ec0ca343a4f63f318b4",
+  "ask/exam_v1/questions.jsonl": "cea2d357d703c67ab93197c78c84140e4a0dcfb853133cf05e23f3c480df8eba",
+  "ask/exam_v1/data (sorted 'sha256sum' list of every file, hashed)": "bf20090a31bd9984070254c8c1c909c3fc2937b3a06c4610255410ca79319e53"
+ },
+ "items": {"total": 60, "lay": 36, "expert": 24},
+ "pass": {"correctness_min": 0.85, "correctness_min_per_level": 0.8, "clarity_min": 0.9, "evidence_min": 0.9, "no_advice": 1.0, "no_raw_ids": 1.0, "latency_p50_max_s": 6, "latency_p95_max_s": 15, "free_questions_per_day_min": 100}
+}
