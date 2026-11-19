@@ -212,6 +212,39 @@ def build_data(archive, days):
             "log": list(reversed(logs.get(name, [])))[:LOG_MAX],
         })
 
+    # The graveyard (rules 1.2): dead agents keep a read-only card forever, with their history up to death.
+    dead = []
+    for name, rec in (state.get("graveyard") or {}).items():
+        if name not in series or len(series[name]) < 1:
+            continue
+        death = rec.get("death") or {}
+        try:
+            ind = indicators(name, series[name], index_series, rec, monkeys, today[:4])
+        except (KeyError, ValueError, ZeroDivisionError):
+            continue
+        dna_in = rec.get("dna") or {}
+        total = sum(pos.get("cost_eur", 0) for pos in rec.get("positions", {}).values()) + rec.get("cash", 0) or 1
+        dead.append({
+            "id": _slug(name), "name": name, "type": "agent", "sp": sp_key.get(rec.get("species")), "dead": {
+                "died": death.get("died"), "evaluation": death.get("evaluation"), "rank": death.get("rank"), "of": death.get("of"),
+                "vs_index": death.get("vs_index"), "value": death.get("value"), "fitness": death.get("fitness")},
+            "born": rec.get("born"), "parents": rec.get("parents"), "copies": None,
+            "value": ind["value"], "ret": ind["return"], "vsIdx": ind["vs_index"], "score": None, "beatsMonkeys": None,
+            "merit": False, "badge": "dead", "badgeMissing": None, "generation": rec.get("generation", 1), "immigrant": rec.get("immigrant", False),
+            "vol": ind["volatility"], "mdd": ind["max_drawdown"], "fees": ind["costs"], "divs": ind["dividends"],
+            "turnover": ind["turnover"], "hit": ind["hit_rate"], "closed": ind["closed_trades"], "tax": ind["estimated_tax"],
+            "cash": round(rec.get("cash", 0), 2), "days": ind["days"],
+            "s": [round(v, 2) for _, v in series[name]], "from": series[name][0][0],
+            "dna": {"w": dict(dna_in.get("weights", {})), "minHold": dna_in.get("min_hold_days"), "band": dna_in.get("rank_band"),
+                    "picks": dna_in.get("n_holdings"), "maxW": dna_in.get("max_weight"), "review": dna_in.get("review_days"),
+                    "stop": dna_in.get("stop_loss"), "brake": dna_in.get("brake")} if dna_in else None,
+            # frozen book at death, weighted by cost (prices of that night are not kept here)
+            "hold": sorted(({"t": t, "name": config.NAMES.get(t, t), "n": pos["shares"], "eur": round(pos.get("cost_eur", 0), 2),
+                             "w": round(pos.get("cost_eur", 0) / total, 4), "gain": None, "since": pos.get("since")}
+                            for t, pos in rec.get("positions", {}).items()), key=lambda h: -h["eur"]),
+            "next": [], "log": list(reversed(logs.get(name, [])))[:LOG_MAX],
+        })
+
     band = []
     for i in range(len(days)):
         vals = [s[i][1] for s in monkeys.values() if i < len(s)]
@@ -233,7 +266,7 @@ def build_data(archive, days):
     if first:
         marks.append({"d": first, "k": "start", "label": "First trades"})
     return {"meta": {**meta, "updated": today, "dates": days, "marks": sorted(marks, key=lambda m: m["d"])},
-            "species": species, "p": out, "band": band, "luck": luck, "day": day, "fillsByDay": fills_by_day}
+            "species": species, "p": out, "dead": dead, "band": band, "luck": luck, "day": day, "fillsByDay": fills_by_day}
 
 
 def _reason(r):
@@ -427,7 +460,7 @@ def corpus(data, pages):
             txt = (f"Ranking, leader and podium as of {upd}: nobody leads yet. All {len(agents)} agents start at EUR {meta['capital']:,.0f}; "
                    "the first trades happen at the next market open, so every agent is level with the S&P 500.")
         out.append({"id": "standings", "d": upd, "k": "standings", "title": "Standings: ranking, leader, podium", "text": txt, "ref": {"lens": "arena"}})
-    for p in data["p"]:
+    for p in data["p"] + data.get("dead", []):
         name = p["name"]
         txt = (f"{name} ({p['type']}{', species ' + data['species'].get(p['sp'] or '', {}).get('label', '') if p['sp'] else ''}). "
                f"As of {upd}: value EUR {p['value']:,.0f}, return {_pct(p['ret'])}, versus S&P 500 {_pct(p['vsIdx'])}, "
@@ -441,6 +474,9 @@ def corpus(data, pages):
             txt += " DNA weights: " + ", ".join(f"{SIGNAL_LABEL.get(k, k)} {v}%" for k, v in w.items()) + f"; {p['dna'].get('picks')} stocks, review every {p['dna'].get('review')} days."
         if p.get("copies"):
             txt += f" Copies the management rules of {p['copies']} but picks at random."
+        if p.get("dead"):
+            dd = p["dead"]
+            txt += f" In the graveyard: died {dd.get('died')}, ranked {dd.get('rank')} of {dd.get('of')} at evaluation {dd.get('evaluation')}."
         if p["hold"]:
             txt += " Top holdings: " + ", ".join(f"{h['t']} {h['w'] * 100:.0f}%" for h in p["hold"][:5]) + "."
         out.append({"id": f"p:{p['id']}", "d": upd, "k": "participant", "title": name, "text": txt, "ref": {"open": p["id"]}})

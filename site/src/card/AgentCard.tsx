@@ -32,7 +32,7 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
     const k = (e: KeyboardEvent) => { if (why) return; if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1); };
     addEventListener("keydown", k); return () => removeEventListener("keydown", k);
   });
-  const sub = isAgent ? `${sp?.label} · ${sp?.about}` : p.type === "monkey" ? "Control · picks at random" : p.type === "index" ? "Benchmark · the water line" : "Benchmark · all companies, equal parts";
+  const sub = p.dead ? `${sp?.label} · died ${p.dead.died}, ranked ${p.dead.rank} of ${p.dead.of} at evaluation ${p.dead.evaluation}` : isAgent ? `${sp?.label} · ${sp?.about}` : p.type === "monkey" ? "Control · picks at random" : p.type === "index" ? "Benchmark · the water line" : "Benchmark · all companies, equal parts";
   const L = M.A.luck;
   const tiles: [string, string, string, string?][] = [
     ["Value", eur(p.value), ""],
@@ -42,7 +42,8 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
       ? [`Beats ${nf(L.n)} monkeys`, nf(p.pctAll * 100) + "%", p.pctAll >= .95 ? "up" : "", `Better than ${nf(p.pctAll * 100)}% of all random monkeys; ${nf((p.pctMirror || 0) * 100)}% of those copying its rules`]
       : ["Beats monkeys", isAgent || p.type === "equal" ? (p.beatsMonkeys == null ? "—" : nf(p.beatsMonkeys * 100) + "%") : "—", ""],
     ["Worst drop", p.mdd ? pct(-p.mdd, 1) : "0%", p.mdd > 1e-4 ? "down" : ""],
-    [isAgent ? "Rank · score" : "Days", isAgent ? `#${M.rank[p.id]}${p.score != null ? " · " + nf(p.score, 2) : ""}` : nf(p.days), "", "Score = return over the index per unit of extra risk"],
+    p.dead ? ["Died · rank", `${p.dead.rank}/${p.dead.of}`, "down", `Ranked ${p.dead.rank} of ${p.dead.of} at evaluation ${p.dead.evaluation}`]
+      : [isAgent ? "Rank · score" : "Days", isAgent ? `#${M.rank[p.id] ?? "—"}${p.score != null ? " · " + nf(p.score, 2) : ""}` : nf(p.days), "", "Score = return over the index per unit of extra risk"],
   ];
   const decisions: Decision[] = [
     ...p.next.map(o => ({ d: M.A.meta.updated || "", dd: o.dd, k: o.k, t: o.t, eur: o.eur, why: o.why, r: o.r, next: true })),
@@ -54,7 +55,8 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
         <div className="hd" style={{ color: colorOf(p) }}>
           {isAgent ? <span className="gem" style={{ background: colorOf(p) }} /> : <Shape p={p} />}
           <div style={{ color: "var(--text)" }}><h1>{label(p)}</h1><div className="sub">{sub}</div></div>
-          {isAgent && <span className={"badge " + (p.merit ? "merit" : p.badge === "rehearsal" ? "reh" : "prov")} title={p.badgeMissing?.length ? "Missing: " + p.badgeMissing.join(" · ") : ""}>{p.merit ? "Merit" : p.badge === "rehearsal" ? "Rehearsal" : "Provisional"}</span>}
+          {p.dead && <span className="badge grave" title={`ranked ${p.dead.rank} of ${p.dead.of} at evaluation ${p.dead.evaluation}`}>In the graveyard</span>}
+          {isAgent && !p.dead && <span className={"badge " + (p.merit ? "merit" : p.badge === "rehearsal" ? "reh" : "prov")} title={p.badgeMissing?.length ? "Missing: " + p.badgeMissing.join(" · ") : ""}>{p.merit ? "Merit" : p.badge === "rehearsal" ? "Rehearsal" : "Provisional"}</span>}
         </div>
         <div className="nav">
           <button aria-label="Previous" onClick={() => step(-1)}>‹</button>
@@ -88,7 +90,7 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
           </>}
         </section>
         <section className="pane holdings">
-          <header><span className="lbl">Holdings · {p.hold.length}</span><span className="k">size = weight · colour = gain</span></header>
+          <header><span className="lbl">{p.dead ? "Book at death · by cost" : "Holdings · " + p.hold.length}</span><span className="k">size = weight · colour = gain</span></header>
           {p.hold.length ? <Tiles p={p} /> : <div className="empty">All in cash</div>}
         </section>
         <section className="pane moves">
@@ -277,9 +279,11 @@ function Chart({ M, p, at, decisions, onWhy }: { M: Model; p: Participant; at: n
   const [ref, { w: W, h: H }] = useSize<HTMLDivElement>();
   const dates = M.A.meta.dates, o = Math.max(0, dates.indexOf(p.from));
   const base = p.s[0] || 1, mine = p.s.map(v => v / base - 1);
-  const ix = M.index && p.type !== "index" ? M.index.s.slice(o).map((v, _i, a) => v / a[0] - 1) : [];
+  const end = o + p.s.length;   // a dead agent's chart stops at its death
+  const ix = M.index && p.type !== "index" ? M.index.s.slice(o, end).map((v, _i, a) => v / a[0] - 1) : [];
   const cap = M.A.meta.capital;
-  const band = M.A.luck?.s ? M.A.luck.s.slice(o) : (M.A.band || []).slice(o).map(b => b && [b[0] / cap - 1, b[1] / cap - 1] as [number, number]);
+  // the luck band is measured from day zero: only comparable for agents born that day
+  const band = o > 0 ? [] : M.A.luck?.s ? M.A.luck.s.slice(0, end) : (M.A.band || []).slice(0, end).map(b => b && [b[0] / cap - 1, b[1] / cap - 1] as [number, number]);
   const m = { l: 46, r: 8, t: 8, b: 30 };
   if (!(W > 0 && H > 0)) return <div className="fill" ref={ref} />;
   const all = [0, ...mine, ...ix, ...band.flat().filter((v): v is number => v != null)];

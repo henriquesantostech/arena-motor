@@ -70,16 +70,17 @@ function Scene({ M, i, tier, tour, hover, onPick, onHover, onReady }: Props) {
   // height scale: the largest gap over the whole season maps to H_MAX, so replayed days are comparable
   const yOf = (g: number) => THREE.MathUtils.clamp(g / M.span, -1, 1) * H_MAX;
   const band = M.luckAt(i), active = M.activeAt(i), rk = M.rankAt(i).rank, started = i > 0 && M.moved;
+  const med = M.medianAt(i);   // size relative to the median agent, so the arena stays readable as money grows
 
   const placed = useMemo(() => {
     const per: Record<string, Participant[]> = {};
     M.A.p.filter(p => p.type === "agent").forEach(p => (per[p.sp || ""] ||= []).push(p));
     const out: { p: Participant; pos: [number, number, number] }[] = [];
-    const S = M.species;
-    S.forEach((sp, si) => {
-      const list = per[sp] || [], n = list.length, w = (Math.PI * 2) / S.length, a0 = (si / S.length) * Math.PI * 2 - Math.PI / 2;
+    // each species gets a slice of the ring in proportion to its living agents (evolution changes the mix)
+    sectorsOf(M).forEach(({ sp, a0, w }) => {
+      const list = per[sp] || [], n = list.length;
       list.forEach((p, k) => {
-        const a = a0 + w * (0.18 + 0.64 * (n === 1 ? 0.5 : k / (n - 1)));
+        const a = a0 + w * (n === 1 ? 0.5 : 0.1 + 0.8 * k / (n - 1));
         out.push({ p, pos: [Math.cos(a) * R_AGENTS, 0, Math.sin(a) * R_AGENTS] });
       });
     });
@@ -111,7 +112,7 @@ function Scene({ M, i, tier, tour, hover, onPick, onHover, onReady }: Props) {
       <LuckBand lo={band ? yOf(band[0]) : 0} hi={band ? yOf(band[1]) : 0} on={!!band} />
       {placed.map(({ p, pos }) => (
         <Figure key={p.id} p={p} pos={pos} y={yOf(M.gapAt(p, i))} value={M.valueAt(p, i)} tier={tier} active={active.has(p.id)} rank={started && p.type === "agent" ? rk[p.id] : 0}
-          capital={M.A.meta.capital} hot={hover === p.id} handlers={pointer} />
+          capital={med} hot={hover === p.id} handlers={pointer} />
       ))}
       <SpeciesLabels M={M} />
       <OrbitControls makeDefault enablePan={false} enableDamping dampingFactor={0.08} minDistance={7} maxDistance={45}
@@ -202,7 +203,7 @@ function Figure({ p, pos, y, value, tier, active, rank, capital, hot, handlers }
   const holder = useRef<THREE.Group>(null), body = useRef<THREE.Mesh>(null), stem = useRef<THREE.Mesh>(null);
   const curY = useRef(0);
   const col = useMemo(() => new THREE.Color(colorOf(p)), [p]);
-  const s = p.type === "agent" ? THREE.MathUtils.clamp(Math.pow((value || capital) / capital, 2.2), 0.6, 1.8) : 1;
+  const s = p.type === "agent" ? THREE.MathUtils.clamp(Math.pow((value || capital) / capital, 2.5), 0.6, 1.6) : 1;
   const phase = useMemo(() => Math.random() * Math.PI * 2, []);
   const t0 = useRef(performance.now());
   useFrame((st, dt) => {
@@ -266,9 +267,15 @@ function Medal({ rank, y }: { rank: number; y: number }) {
   return <sprite position-y={y} scale={0.42}><spriteMaterial map={tex} transparent depthWrite={false} toneMapped={false} /></sprite>;
 }
 
+function sectorsOf(M: Model) {
+  const count = (sp: string) => M.A.p.filter(p => p.type === "agent" && p.sp === sp).length;
+  const S = M.species.filter(sp => count(sp) > 0), total = S.reduce((t, sp) => t + count(sp), 0) || 1;
+  let acc = -Math.PI / 2;
+  return S.map(sp => { const w = count(sp) / total * Math.PI * 2, out = { sp, a0: acc, w }; acc += w; return out; });
+}
+
 function SpeciesLabels({ M }: { M: Model }) {
-  const S = M.species;
-  return <>{S.map((sp, si) => <SpeciesLabel key={sp} text={(M.A.species[sp]?.label || sp).toUpperCase()} color={colorOf({ type: "agent", sp } as Participant)} angle={((si + 0.5) / S.length) * Math.PI * 2 - Math.PI / 2} />)}</>;
+  return <>{sectorsOf(M).map(({ sp, a0, w }) => <SpeciesLabel key={sp} text={(M.A.species[sp]?.label || sp).toUpperCase()} color={colorOf({ type: "agent", sp } as Participant)} angle={a0 + w / 2} />)}</>;
 }
 function SpeciesLabel({ text, color, angle }: { text: string; color: string; angle: number }) {
   const tex = useMemo(() => canvasTexture(512, 96, g => {

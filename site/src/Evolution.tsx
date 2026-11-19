@@ -55,7 +55,7 @@ export function Evolution({ M, onPick }: { M: Model; onPick: (id: string) => voi
   const last = G?.comparison?.[G.comparison.length - 1];
   const alive = T ? T.nodes.filter(n => n.alive).length : 0, dead = T ? T.nodes.length - alive : 0;
   const H = hot && T ? T.nodes.find(n => n.name === hot) : null;
-  const goCard = (name: string) => { const p = M.A.p.find(x => x.name === name); if (p) onPick(p.id); };
+  const goCard = (name: string) => { const p = [...M.A.p, ...(M.A.dead || [])].find(x => x.name === name); if (p) onPick(p.id); };
 
   return (
     <section className="evo">
@@ -77,7 +77,7 @@ export function Evolution({ M, onPick }: { M: Model; onPick: (id: string) => voi
             }))}
             {T.nodes.map(n => {
               const p = layout.pos.get(n.name)!, col = spColor(n.species), r = n.alive ? 4.5 : 3;
-              return <g key={n.name} style={{ cursor: "pointer" }} onPointerEnter={() => setHot(n.name)} onPointerLeave={() => setHot(null)} onClick={() => n.alive && goCard(n.name)}>
+              return <g key={n.name} style={{ cursor: "pointer" }} onPointerEnter={() => setHot(n.name)} onPointerLeave={() => setHot(null)} onClick={() => goCard(n.name)}>
                 {n.alive && <circle cx={p.x} cy={p.y} r={r + 4} fill={col} opacity=".18" />}
                 <circle cx={p.x} cy={p.y} r={r} fill={n.alive ? col : "#2a303d"} stroke={n.immigrant ? "#fff" : n.alive ? "none" : "#4b5367"} strokeWidth={n.immigrant ? 1.4 : 1} />
                 {!n.alive && <path d={`M${p.x - 2},${p.y - 2}L${p.x + 2},${p.y + 2}M${p.x + 2},${p.y - 2}L${p.x - 2},${p.y + 2}`} stroke="#6f7686" strokeWidth=".8" />}

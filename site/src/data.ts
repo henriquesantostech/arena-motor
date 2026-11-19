@@ -16,7 +16,8 @@ export interface Participant {
   tax: number; cash: number; days: number; s: number[]; from: string; dna: Dna | null; hold: Holding[];
   next: { k: string; t: string; eur?: number | null; all?: boolean; why?: string; dd?: string; r?: Reason | null }[]; log: Move[];
   pctAll?: number | null; pctMirror?: number | null;
-  badge?: "provisional" | "merit" | "rehearsal" | null; badgeMissing?: string[] | null; generation?: number | null; immigrant?: boolean | null;
+  dead?: { died: string; evaluation: number; rank: number; of: number; vs_index: number; value: number; fitness?: number } | null;
+  badge?: "provisional" | "merit" | "rehearsal" | "dead" | null; badgeMissing?: string[] | null; generation?: number | null; immigrant?: boolean | null;
 }
 
 export interface Luck { n: number; date: string; p05: number | null; median: number | null; p95: number | null; best: number | null; s: ([number, number] | null)[] }
@@ -31,6 +32,7 @@ export interface Arena {
   fillsByDay?: Record<string, string[]>;
   species: Record<string, { label: string; family: string; about: string }>;
   p: Participant[];
+  dead?: Participant[];   // the graveyard: read-only cards, never in rankings
   band: ([number, number] | null)[];
   luck?: Luck | null;
   day: { date: string; buys: number; sells: number; spx: number | null; eurusd: number | null; aboveMa200: boolean | null; orders: number; excluded: number } | null;
@@ -62,6 +64,7 @@ export interface Model {
   rankAt(i: number): { agents: Participant[]; rank: Record<string, number> };
   activeAt(i: number): Set<string>;
   span: number;                                   // largest gap to the index over the whole season (stable height scale)
+  medianAt(i: number): number;                    // median agent value on night i (crystal size is relative to it)
 }
 
 export interface Shard {
@@ -84,7 +87,7 @@ export async function loadArena(): Promise<Arena> {
 
 export function buildModel(A: Arena): Model {
   const P = A.p;
-  const byId = Object.fromEntries(P.map(p => [p.id, p]));
+  const byId = Object.fromEntries([...P, ...(A.dead || [])].map(p => [p.id, p]));
   const index = P.find(p => p.type === "index"), equal = P.find(p => p.type === "equal");
   const raw = P.filter(p => p.type === "agent");
   const scored = raw.length > 0 && raw.every(p => p.score != null);
@@ -139,7 +142,8 @@ export function buildModel(A: Arena): Model {
     const b = luckAt(i); if (b) span = Math.max(span, Math.abs(b[0]), Math.abs(b[1]));
   }
   return { A, byId, agents, monkeys, index, equal, order, species: Object.keys(A.species), scored, moved, luck,
-    luckN: L?.n || monkeys.length, lucky, active, rank, gap, last: lastI, retAt, gapAt, valueAt, luckAt, rankAt, activeAt, span };
+    luckN: L?.n || monkeys.length, lucky, active, rank, gap, last: lastI, retAt, gapAt, valueAt, luckAt, rankAt, activeAt, span,
+    medianAt: (i: number) => { const v = raw.map(p => valueAt(p, i)).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : A.meta.capital; } };
 }
 
 // ---------- formatting (en-GB, tabular) ----------

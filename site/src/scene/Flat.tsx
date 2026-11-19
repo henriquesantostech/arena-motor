@@ -37,7 +37,7 @@ export function Flat({ M, i, onPick, onHover, onReady }: { M: Model; i: number; 
             <text x={cx} y={m.t + ph + 22} textAnchor="middle" fill={c === "monkey" ? COLOR.monkey : c === "equal" ? "#fff" : colorOf(group[0] || P[0])} fontSize={phone ? 10 : 12} fontWeight="600">{lab}</text>
             {group.map((p, k) => {
               const off = group.length > 1 ? (k / (group.length - 1) - .5) * Math.min(cw * .6, 14 * group.length) : 0;
-              const r = p.type === "agent" ? 7 * Math.max(.7, Math.min(1.6, Math.pow((M.valueAt(p, i) || M.A.meta.capital) / M.A.meta.capital, 2.2))) : 5;
+              const r = p.type === "agent" ? 7 * Math.max(.7, Math.min(1.6, Math.pow((M.valueAt(p, i) || M.medianAt(i)) / M.medianAt(i), 2.5))) : 5;
               const cy = y(M.gapAt(p, i)), x = cx + off, col = colorOf(p);
               const ev = { onClick: () => onPick(p.id), onPointerMove: (e: React.PointerEvent) => onHover(p.id, e.clientX, e.clientY), style: { cursor: "pointer" } };
               return <g key={p.id}>
