@@ -13,7 +13,11 @@ export default defineConfig({
     sourcemap: false,
     assetsInlineLimit: 0,
     modulePreload: { polyfill: false },
-    chunkSizeWarningLimit: 1500,   // the 3D world chunk is big by nature and loads after the first frame
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      // the main site plus the two Experience v3 prototypes (same data, same login)
+      input: { main: "index.html", race: "p/race/index.html", world: "p/world/index.html" },
+    },   // the 3D world chunk is big by nature and loads after the first frame
   },
   server: { port: 5173 },
 });

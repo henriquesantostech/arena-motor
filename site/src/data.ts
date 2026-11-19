@@ -79,8 +79,8 @@ export function loadShard(d: string): Promise<Shard> {
   return shardCache.get(d)!;
 }
 
-export async function loadArena(): Promise<Arena> {
-  const r = await fetch("./data/arena.json", { cache: "no-cache" });
+export async function loadArena(base = "./"): Promise<Arena> {
+  const r = await fetch(base + "data/arena.json", { cache: "no-cache" });
   if (!r.ok) throw new Error("data " + r.status);
   return r.json();
 }

@@ -135,6 +135,7 @@ def build_data(archive, days):
                for e, v in sp_all.items()}
     meta["signals"] = {k: SIGNAL_LABEL.get(k, k) for k in config.SIGNALS}
     meta["generation"] = config.POPULATION.get("generation", 1)
+    meta["companies"] = {c["ticker"]: {"name": c["name"], "sector": c.get("sector")} for c in config.UNIVERSE["companies"]}   # names, not tickers, for lay readers
     meta["evidence"] = _evidence(archive)
     if not days:
         return {"meta": {**meta, "updated": None, "dates": [], "marks": []}, "species": species, "p": [], "band": [], "day": None}
