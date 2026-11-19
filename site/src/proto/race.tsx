@@ -11,7 +11,7 @@ import { Bar, Head, Stories, TimeBar, useDay, useTheme } from "./shell";
 
 function App() {
   const [A, setA] = useState<Arena | null>(null);
-  useEffect(() => { loadArena("../../").then(setA).catch(() => setA(null)); }, []);
+  useEffect(() => { loadArena().then(setA).catch(() => setA(null)); }, []);
   if (!A) return <div className="app"><p className="quiet">Loading the race…</p></div>;
   return <Race M={buildModel(A)} />;
 }
@@ -28,9 +28,9 @@ function Race({ M }: { M: Model }) {
 
   const cap = capital(M.A);
   const order = useMemo(() => M.agents.slice().sort((a, b) => M.gapAt(b, i) - M.gapAt(a, i)), [M, i]);
-  const pad = 96, laneH = Math.max(10, Math.min(34, (size.h - 24) / Math.max(1, order.length)));
-  const span = Math.max(.02, M.span);
-  const X = (g: number) => pad + (size.w - pad - 40) * (0.5 + Math.max(-1, Math.min(1, g / span)) / 2);
+  const pad = 100, laneH = Math.max(8, Math.min(40, (size.h - 20) / Math.max(1, order.length)));
+  const span = Math.max(.02, M.span * .8), K = 1.4;
+  const X = (g: number) => pad + (size.w - pad - 36) * (0.5 + Math.tanh(K * Math.max(-3, Math.min(3, g / span))) / Math.tanh(K) / 2.4);
   const band = M.luckAt(i);
   // drag the track to move through time
   const drag = useRef<{ x: number; i: number } | null>(null);
@@ -57,13 +57,13 @@ function Race({ M }: { M: Model }) {
                   onClick={() => setOpen(p.id)} onPointerEnter={e => setTip({ p, x: e.clientX, y: e.clientY })} onPointerLeave={() => setTip(null)}
                   aria-label={`${p.name}: ${euro(Math.abs(g * cap))} ${g >= 0 ? "ahead of" : "behind"} the market`}>
                   <span className="nm">{p.name}</span>
-                  <CreatureSvg p={p} size={laneH + 10} dark={dark} t={t} />
+                  <CreatureSvg p={p} size={Math.min(60, laneH * 1.5 + 12)} dark={dark} t={t} />
                 </button>
               );
             })}
             {tip && (() => { const g = M.gapAt(tip.p, i), r = box.current!.getBoundingClientRect(); return (
               <div className="tip" style={{ left: Math.min(tip.x - r.left + 14, size.w - 290), top: Math.min(tip.y - r.top + 14, size.h - 90) }}>
-                <b>{tip.p.name}</b><span>{STRATEGY[tip.p.sp || ""]}</span><br />
+                <b>{tip.p.name}</b><em className="sp">{STRATEGY[tip.p.sp || ""] || "Its own mix of rules"}</em>
                 <span className={g >= 0 ? "gain" : "loss"}>{euro(Math.abs(g * cap))} {g >= 0 ? "ahead of" : "behind"} the market</span> · <span>now {euro(M.valueAt(tip.p, i))}</span>
               </div>); })()}
           </div>

@@ -89,7 +89,7 @@ upload(dir);
 
 // 4. Check from outside (the address and the deployment's own address): page and data must ask for a login.
 async function gated(base) {
-  for (const path of ["/", "/data/arena.json", "/data/corpus.json", "/api/ask", "/index.html"]) {
+  for (const path of ["/", "/data/arena.json", "/data/corpus.json", "/api/ask", "/index.html", "/classic/"]) {
     let ok = false;
     for (let i = 0; i < 6 && !ok; i++) {
       const r = await fetch(base + path, { redirect: "manual" }).catch(() => null);

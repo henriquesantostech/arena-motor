@@ -1,6 +1,6 @@
 // ASK copilot, browser side: retrieval over the nightly corpus (BM25, as known at the selected day),
 // interface commands ("show Arrow-03 in March"), and the call to /api/ask (behind the same login).
-import type { Model } from "./data";
+import { ROOT, type Model } from "./data";
 
 export interface Passage { id: string; d: string | null; k: string; title: string; text: string; cites?: string[]; ref?: { open?: string; date?: string; lens?: string; species?: string } }
 export interface Action { type: "open" | "date" | "lens" | "close"; id?: string; d?: string; lens?: string }
@@ -8,7 +8,7 @@ export interface Answer { text: string; cites: Passage[]; actions: Action[]; mod
 
 let corpusP: Promise<Passage[]> | null = null;
 export function loadCorpus() {
-  corpusP ||= fetch("./data/corpus.json").then(r => r.ok ? r.json() : { passages: [] }).then(j => j.passages as Passage[]);
+  corpusP ||= fetch(ROOT + "data/corpus.json").then(r => r.ok ? r.json() : { passages: [] }).then(j => j.passages as Passage[]);
   return corpusP;
 }
 

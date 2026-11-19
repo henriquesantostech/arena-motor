@@ -1,7 +1,7 @@
 // JOURNAL lens: the daily newspaper. One page per night, built only from what was known that night,
 // every item with its source. Tabs: Front · Markets · World · Companies · People · Arena.
 import { useEffect, useState } from "react";
-import { COLOR, day, dayY, nf, pct, tone, type Model } from "./data";
+import { COLOR, day, dayY, nf, pct, ROOT, tone, type Model } from "./data";
 import { Shape } from "./hud";
 
 type Cite = { id: string; title?: string; url?: string; source?: string; published_at?: string };
@@ -17,7 +17,7 @@ type Page = {
 };
 const cache = new Map<string, Promise<Page>>();
 const load = (d: string) => {
-  if (!cache.has(d)) cache.set(d, fetch(`./data/journal/${d}.json`).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); }));
+  if (!cache.has(d)) cache.set(d, fetch(`${ROOT}data/journal/${d}.json`).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); }));
   return cache.get(d)!;
 };
 const TABS = ["front", "markets", "world", "companies", "people", "arena"] as const;

@@ -1,12 +1,12 @@
 // X5 lenses fed by the Signal Lab and the intelligence layer: LAB (truth meter) and PEOPLE (disclosures).
 // Data files are loaded on demand from data/lab and data/intel; if a file is missing the lens says so.
 import { useEffect, useMemo, useState } from "react";
-import { COLOR, colorOf, day, nf, pct, sigLabel, type Model } from "./data";
+import { COLOR, colorOf, day, nf, pct, ROOT, sigLabel, type Model } from "./data";
 import { Shape } from "./hud";
 
 const cache = new Map<string, Promise<unknown>>();
 export function loadData<T>(path: string): Promise<T | null> {
-  if (!cache.has(path)) cache.set(path, fetch("./data/" + path).then(r => r.ok ? r.json() : null).catch(() => null));
+  if (!cache.has(path)) cache.set(path, fetch(ROOT + "data/" + path).then(r => r.ok ? r.json() : null).catch(() => null));
   return cache.get(path) as Promise<T | null>;
 }
 export function useData<T>(path: string) {

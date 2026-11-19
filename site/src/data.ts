@@ -75,11 +75,12 @@ export interface Shard {
 }
 const shardCache = new Map<string, Promise<Shard>>();
 export function loadShard(d: string): Promise<Shard> {
-  if (!shardCache.has(d)) shardCache.set(d, fetch(`./data/days/${d}.json`).then(r => { if (!r.ok) throw new Error("shard " + r.status); return r.json(); }));
+  if (!shardCache.has(d)) shardCache.set(d, fetch(`${ROOT}data/days/${d}.json`).then(r => { if (!r.ok) throw new Error("shard " + r.status); return r.json(); }));
   return shardCache.get(d)!;
 }
 
-export async function loadArena(base = "./"): Promise<Arena> {
+export const ROOT = document.documentElement.dataset.root ?? "./";
+export async function loadArena(base = ROOT): Promise<Arena> {
   const r = await fetch(base + "data/arena.json", { cache: "no-cache" });
   if (!r.ok) throw new Error("data " + r.status);
   return r.json();

@@ -109,3 +109,6 @@ a { color: var(--market) }
 .meadow:hover { color: var(--ink) }
 .tag { white-space: nowrap; display: flex; flex-direction: column; align-items: center; font-size: var(--label); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; box-shadow: var(--shadow) }
 .tag b { font-weight: 600; color: var(--ink) }
+.tip .sp { display: block; font-style: normal; color: var(--ink); font-size: var(--body); margin: 2px 0 4px }
+.settings { display: flex; align-items: center; gap: 14px }
+.settings .full { color: var(--faint); font-size: var(--label); text-decoration: none } .settings .full:hover { color: var(--ink); text-decoration: underline }

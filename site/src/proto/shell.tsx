@@ -1,7 +1,7 @@
 // What both prototypes share around the picture: theme, the top bar with the three doors, the answer
 // sentence and the stories of the day. Only the picture in the middle differs (2D race vs 3D world).
 import { useEffect, useState } from "react";
-import type { Model, Participant } from "../data";
+import { ROOT, type Model, type Participant } from "../data";
 import { dayName, euro, headline, sentence } from "./common";
 import { CreatureSvg } from "./Story";
 
@@ -16,9 +16,9 @@ export function Bar({ dark, setDark }: { dark: boolean; setDark: (d: boolean) =>
     <header className="bar">
       <div className="brand"><svg width="22" height="22" viewBox="-11 -11 22 22"><circle r="9" fill="var(--market)" opacity=".9" /></svg>Agent Arena <span className="quiet">· trial · pretend money</span></div>
       <nav className="doors" aria-label="Main">
-        <button className="on">Today</button><a href="../../">Explore</a><a href="../../" title="Ask is being rebuilt; opens the current one">Ask</a>
+        <button className="on">Today</button><a href={ROOT + "classic/"}>Explore</a><a href={ROOT + "classic/"} title="Ask is being rebuilt; opens the current one">Ask</a>
       </nav>
-      <div className="settings"><button onClick={() => setDark(!dark)}>{dark ? "Light" : "Dark"}</button></div>
+      <div className="settings"><a className="full" href={ROOT + "classic/"}>Full detail</a><button onClick={() => setDark(!dark)}>{dark ? "Light" : "Dark"}</button></div>
     </header>
   );
 }

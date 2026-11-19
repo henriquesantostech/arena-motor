@@ -19,7 +19,7 @@ const ROW = 2.4;        // distance between species meadows
 
 function App() {
   const [A, setA] = useState<Arena | null>(null);
-  useEffect(() => { loadArena("../../").then(setA).catch(() => setA(null)); }, []);
+  useEffect(() => { loadArena().then(setA).catch(() => setA(null)); }, []);
   if (!A) return <div className="app"><p className="quiet">Loading the world…</p></div>;
   return <LivingWorld M={buildModel(A)} />;
 }

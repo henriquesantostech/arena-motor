@@ -1,6 +1,6 @@
 // Story → Detail panel, shared by both prototypes. Slides in from the right; Evidence links to the current site.
 import { useEffect, useRef, useState } from "react";
-import type { Model, Participant } from "../data";
+import { ROOT, type Model, type Participant } from "../data";
 import { bodyPath, capital, caresAbout, company, creatureFill, creatureOf, dayName, euro, sentence, STRATEGY } from "./common";
 
 export function CreatureSvg({ p, size, dark, t = 0 }: { p: Participant; size: number; dark: boolean; t?: number }) {
@@ -59,7 +59,7 @@ export function Story({ M, p, i, dark, onClose, crumbs }: { M: Model; p: Partici
           {!p.hold.length && <div className="quiet">Only cash.</div>}</div>
         {p.dna && <><h3>What it cares about</h3>
           <ul className="cares">{caresAbout(p).map(r => <li key={r.label}><span>{r.label}</span><span className="dots">{"●●●●●".slice(0, r.dots)}<span className="off">{"●●●●●".slice(r.dots)}</span></span></li>)}</ul></>}
-        <a className="evidence-link" href={`../../#/${p.id}`}>Check the evidence: every number, verified →</a>
+        <a className="evidence-link" href={`${ROOT}classic/#/${p.id}`}>Check the evidence: every number, verified →</a>
       </>}
     </aside>
   );
