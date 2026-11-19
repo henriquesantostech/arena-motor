@@ -42,6 +42,7 @@ a { color: var(--market) }
 .pacer span { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--label); color: var(--market); font-weight: 600 }
 .luck { position: absolute; top: 0; bottom: 0; background: var(--luck); border-radius: 10px; transition: left .3s var(--ease), width .3s var(--ease) }
 .luck span { position: absolute; bottom: 6px; left: 10px; font-size: var(--label); color: var(--faint); white-space: nowrap }
+.luckkey { display: flex; align-items: center; gap: 6px; color: var(--soft) } .luckkey i { width: 14px; height: 10px; border-radius: 3px; background: var(--luck); outline: 1px solid var(--line) }
 .side { position: absolute; top: 4px; font-size: var(--label); color: var(--faint) }
 .monkey { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--faint); opacity: .35; transition: left .3s var(--ease), top .3s var(--ease) }
 .runner { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 6px; transition: transform .3s var(--ease); cursor: pointer }
@@ -95,3 +96,16 @@ a { color: var(--market) }
   .doors a, .doors button { padding: 6px 10px }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+
+/* prototype B: the living world */
+.world .stage { position: relative; min-height: 0; border-radius: 12px; overflow: hidden }
+.world .stage canvas { display: block; touch-action: none }
+.luckkey .sep { width: 1px; height: 12px; background: var(--line); margin: 0 6px }
+.luckkey.floating { position: absolute; left: 10px; bottom: 8px; background: var(--panel); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); font-size: var(--label); pointer-events: none }
+.crumbs3 { display: flex; gap: 6px; align-items: center }
+.crumbs3 button { color: var(--market); font-size: var(--label); font-weight: 600 }
+.crumbs3 button + button::before { content: "›"; margin-right: 6px; color: var(--faint); font-weight: 400 }
+.meadow { white-space: nowrap; transform: none !important; font-size: var(--label); color: var(--soft); background: var(--panel); border: 1px solid; border-left-width: 4px; border-radius: 8px; padding: 4px 8px; transform: translateX(-40%) }
+.meadow:hover { color: var(--ink) }
+.tag { white-space: nowrap; display: flex; flex-direction: column; align-items: center; font-size: var(--label); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; box-shadow: var(--shadow) }
+.tag b { font-weight: 600; color: var(--ink) }

@@ -34,21 +34,23 @@ export function creatureOf(p: Participant): Creature {
   };
 }
 
-/** Closed SVG path of the creature's body, centred on 0,0, about `r` in radius. `t` animates breathing. */
-export function bodyPath(c: Creature, r: number, t = 0) {
-  const n = 72, pts: string[] = [];
+/** Outline points of the creature's body, centred on 0,0, about `r` in radius (SVG y-down). `t` animates breathing. */
+export function bodyPoints(c: Creature, r: number, t = 0, n = 72): [number, number][] {
+  const pts: [number, number][] = [];
   const breathe = 1 + 0.035 * Math.sin((t / c.breath) * Math.PI * 2);
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2;
     const spike = c.spikes * 0.42 * Math.pow(Math.max(0, Math.cos(c.lobes * a + c.seed)), 6);
     const wobble = (1 - c.round) * 0.08 * Math.sin(3 * a + c.seed * .7);
-    let rr = r * breathe * (1 + spike + wobble);
-    let x = Math.cos(a) * rr * c.elong, y = Math.sin(a) * rr / Math.sqrt(c.elong);
+    const rr = r * breathe * (1 + spike + wobble);
+    let x = Math.cos(a) * rr * c.elong; const y = Math.sin(a) * rr / Math.sqrt(c.elong);
     x += -y * c.lean;                                          // leaning forward (to the right)
-    pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+    pts.push([x, y]);
   }
-  return "M" + pts.join("L") + "Z";
+  return pts;
 }
+/** Closed SVG path of the creature's body. */
+export const bodyPath = (c: Creature, r: number, t = 0) => "M" + bodyPoints(c, r, t).map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join("L") + "Z";
 export const creatureFill = (c: Creature, dark: boolean, alpha = 1) =>
   c.stone ? `hsla(220, 6%, ${dark ? 42 : 66}%, ${alpha})` : `hsla(${c.hue}, ${dark ? 48 : 52}%, ${dark ? 62 : 52}%, ${alpha})`;
 
