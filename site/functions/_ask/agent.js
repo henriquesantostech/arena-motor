@@ -161,6 +161,11 @@ export async function answer(req, { store, env, models = [], mode = "ai", budget
   if (hasAdvice([say, ...more].join(" "))) { say = "I can't give investment advice: the agents trade simulated money, and nothing here says what anyone should buy or sell."; more = P.leads.slice(0, 1); }
   const pick = (keys, map) => (Array.isArray(keys) ? keys : [keys]).map(k => map[String(k)]).filter(Boolean);
   let visual = out.visual && P.visuals[String(out.visual)] || null;
+  // the picture that answers this kind of question, when we have it
+  const want = /\b(own|owns|hold|holds|holdings|portfolio|bought|buy|compr\w*|why)\b/i.test(q) && U.agents.length === 1 && !U.companies.length ? "tiles"
+    : /\b(luck|monkeys?|significan\w*)\b/i.test(q) ? "luck" : U.agents.length > 1 || /\b(compare|group|species)\b/i.test(q) ? "bars" : U.companies.length && U.agents.length ? "drivers" : null;
+  const wanted = want && Object.values(P.visuals).find(v => v.type === want);
+  if (wanted && kind === "answer") visual = wanted;
   if (!visual && kind === "answer" && !U.advice) visual = Object.values(P.visuals)[0] || null;
   let sources = pick(out.sources, P.sources);
   if (!sources.length && (kind === "answer")) sources = Object.values(P.sources).slice(0, 2);

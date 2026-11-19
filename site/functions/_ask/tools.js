@@ -77,7 +77,7 @@ export function decisionPlain(p, l, pending = false) {
   });
   const when = pending ? `at the next market open (decided the night of ${dayName(l.dd)})` : `${l.eur ? "for " + eur(l.eur) + " " : ""}at the open of ${dayName(l.d)} (decided the night of ${dayName(l.dd)})`;
   return `${p.name} ${verb} ${who} (${l.t}) ${when}. Reason: ${CAUSE_PLAIN[r.cause] || r.cause || "n/a"}`
-    + (/stop loss|limit/i.test(l.why || "") && r.cause === "stop_loss" ? ` (${(l.why || "").split(".")[0].replace("Stop loss: ", "")})` : "")
+    + (/stop loss|limit/i.test(l.why || "") && r.cause === "stop_loss" ? ` (${((l.why || "").match(/Stop loss: ([^)]*\))/) || [, ""])[1].replace(/−/g, "-")})` : "")
     + (/Brake on/.test(l.why || "") ? "; brake on: the market is below its 200-day average, so it keeps only part of its money invested" + ((l.why || "").match(/only (\d+)%/) ? ` (${(l.why || "").match(/only (\d+)%/)[1]}%)` : "") : "")
     + (/Trims to the ([\d.]+)% target/.test(l.why || "") ? `; trims to ${(l.why || "").match(/Trims to the ([\d.]+)%/)[1]}% of its money` : "")
     + `. Score ${r.score != null ? r.score.toFixed(2) : "n/a"}${r.rank ? `, ${ordinal(r.rank)} of ${r.of} companies` : ""}. Main reasons: ${drivers.join("; ") || "n/a"}.`;
