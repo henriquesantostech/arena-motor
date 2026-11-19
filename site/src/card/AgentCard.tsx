@@ -4,6 +4,7 @@ import {
   type Model, type Move, type Participant, type Reason, type Shard, type Verdict,
 } from "../data";
 import { Shape } from "../hud";
+import { useData } from "../Intel";
 
 function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -53,7 +54,7 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
         <div className="hd" style={{ color: colorOf(p) }}>
           {isAgent ? <span className="gem" style={{ background: colorOf(p) }} /> : <Shape p={p} />}
           <div style={{ color: "var(--text)" }}><h1>{label(p)}</h1><div className="sub">{sub}</div></div>
-          {isAgent && <span className={"badge " + (p.merit ? "merit" : "prov")}>{p.merit ? "Merit" : "Provisional"}</span>}
+          {isAgent && <span className={"badge " + (p.merit ? "merit" : p.badge === "rehearsal" ? "reh" : "prov")} title={p.badgeMissing?.length ? "Missing: " + p.badgeMissing.join(" · ") : ""}>{p.merit ? "Merit" : p.badge === "rehearsal" ? "Rehearsal" : "Provisional"}</span>}
         </div>
         <div className="nav">
           <button aria-label="Previous" onClick={() => step(-1)}>‹</button>
@@ -76,6 +77,7 @@ export function AgentCard({ M, p, at, onClose, onGo }: { M: Model; p: Participan
             <header><span className="lbl">DNA</span>
               <span className="k num">{p.dna.picks} stocks · {p.dna.review}d review · {p.dna.stop ? "stop " + pct(-p.dna.stop, 0) : "no stop"}{p.dna.band != null ? ` · band ${p.dna.band}` : ""}</span></header>
             <Helix M={M} p={p} />
+            <MeritBox p={p} />
           </> : <>
             <header><span className="lbl">How it works</span></header>
             <div className="mute" style={{ fontSize: 13.5, lineHeight: 1.55 }}>
@@ -346,6 +348,27 @@ function Tiles({ p }: { p: Participant }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Merit badge v2 (rules 1.2): what the statistics say about this agent, and what is still missing.
+type MeritRow = { days: number; sharpe_annual: number | null; psr0: number | null; dsr: number | null; min_trl_years: number | null;
+  best_of_monkeys: { p_value: number; percentile: number; above_p95: boolean } | null; alpha: { alpha_annual: number; t: number } | null; badge: string; badge_missing: string[] };
+const CONDITIONS = ["12 months of life", "DSR >= 0.95", "above the best-of-monkeys p95", "beats the S&P 500 net of costs"];
+function MeritBox({ p }: { p: Participant }) {
+  const R = useData<{ evidence: string; explain: string; agents: Record<string, MeritRow> }>("merit/report.json");
+  const r = R?.agents?.[p.name];
+  if (!r) return null;
+  const miss = new Set(r.badge_missing || []);
+  return (
+    <div className="merit-box" title={R?.explain || ""}>
+      <div className="mline num"><span className="lbl">Merit</span>
+        <span title="Deflated Sharpe ratio: probability the Sharpe is real after all the agents tried">DSR <b>{r.dsr == null ? "—" : nf(r.dsr, 2)}</b></span>
+        <span title="Years of track record needed for this Sharpe to be believable">min. record <b>{r.min_trl_years == null ? (r.sharpe_annual == null ? "—" : "never") : nf(r.min_trl_years, 1) + "y"}</b></span>
+        <span title="Alpha t-stat against market, momentum and low-volatility factors">alpha t <b>{r.alpha ? nf(r.alpha.t, 1) : "—"}</b></span></div>
+      <div className="need">{CONDITIONS.map(c => <span key={c} className={miss.has(c) ? "" : "ok"}>{miss.has(c) ? "·" : "✓"} {c}</span>)}</div>
+      {R?.evidence && R.evidence !== "official" && <div className="faint small">{R.evidence}</div>}
     </div>
   );
 }

@@ -448,3 +448,18 @@ body.lite .glass { backdrop-filter: none; -webkit-backdrop-filter: none; backgro
   .glass { background: rgba(4, 8, 18, .97) !important; backdrop-filter: none !important }
   .grain { display: none }
 }
+
+/* ---------- Phase 3: evolution and merit ---------- */
+.evidence { font-size: 11.5px; padding: 6px 10px; border-radius: 8px; color: var(--gold); background: rgba(255, 211, 77, .07); border: 1px solid rgba(255, 211, 77, .25) }
+.evidence.ok { color: var(--up); background: rgba(62, 224, 143, .07); border-color: rgba(62, 224, 143, .25) }
+.ghost-wait { color: var(--mute); font-size: 13px; line-height: 1.5; padding: 10px 0 }
+.ghostchart { width: 100%; height: 150px }
+.verdict { font-size: 13px; color: var(--mute) } .verdict b { color: var(--text) } .verdict.up b { color: var(--up) }
+.merit-box { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px }
+.merit-box .need { display: flex; flex-wrap: wrap; gap: 6px }
+.merit-box .need span { padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--mute) }
+.merit-box .need span.ok { color: var(--up); border-color: rgba(62, 224, 143, .35) }
+.dna .fill { min-height: 150px }
+.merit-box { padding-top: 6px; border-top: 1px solid var(--line) }
+.mline { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 11.5px; color: var(--mute) } .mline b { color: var(--text); font-weight: 500 }
+.merit-box .need span { font-size: 10.5px; padding: 1px 6px }

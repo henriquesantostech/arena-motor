@@ -1,98 +1,139 @@
-// EVOLUTION lens: the tree of life (founders by species, branches glow while alive, ash at death),
-// the gene-drift heatmap (population weights per signal, by generation and by species) and the ghost
-// tree (the monkeys: same rules, random picks; the null evolution runs beside the real one).
+// EVOLUTION lens (phase 3 data): the tree of life by generation (branches glow while alive, ash at death,
+// immigrants ringed), the gene drift across generations, and the ghost tree: the same evolution applied to
+// random pickers. If the agents' winners are not clearly better than the ghosts', selection is luck — and the
+// screen says so. The evidence line from the engine is always shown.
 import { useMemo, useState } from "react";
-import { COLOR, nf, pct, sigLabel, SPECIES_COLOR, type Model, type Participant } from "./data";
+import { COLOR, nf, pct, sigLabel, SPECIES_COLOR, type Model } from "./data";
+import { useData } from "./Intel";
+
+type Node = { name: string; species: string; generation: number; cohort: number; slot: number; immigrant: boolean; parents: string[] | null; born: string; alive: boolean; died: string | null;
+  death: { evaluation: number; rank: number; of: number; fitness: number; vs_index: number; value: number } | null; value: number; dna: { weights: Record<string, number> } & Record<string, unknown>;
+  gene_delta: { weights: Record<string, number>; management: Record<string, { from: unknown; to: unknown }> } | null };
+type Tree = { date: string; rules_version: string; evidence: string; evaluations: { date: string; deaths: string[]; births: { name: string }[] }[]; nodes: Node[]; generations: { generation: number; born: number; alive: number }[] };
+type Cmp = { date: string; agents_top5_mean: number; agents_best: number; ghosts_top5_mean: number[]; ghosts_best: number[]; agents_top5_beats_worlds: number };
+type Null = { date: string; evidence: string; note: string; worlds: { world: number; count: number }[]; comparison: Cmp[]; replay_identical: boolean };
+
+const FAMILY_KEY: Record<string, string> = { "Trend": "arrow", "Contrarian": "wave", "Value & Quality": "rock", "News": "echo", "Balanced": "plumb", "Mirror": "mirror", "Compass": "compass" };
 
 export function Evolution({ M, onPick }: { M: Model; onPick: (id: string) => void }) {
-  const gen = (M.A.meta as { generation?: number }).generation || 1;
+  const T = useData<Tree>("evolution/tree.json"), G = useData<Null>("evolution/null.json");
   const [hot, setHot] = useState<string | null>(null);
-  const agents = M.A.p.filter(p => p.type === "agent");
+  const spColor = (fam: string) => SPECIES_COLOR[FAMILY_KEY[fam] || fam.toLowerCase()] || "#9aa4b8";
   const signals = Object.keys(M.A.meta.signals || {});
-  const bySp = useMemo(() => {
-    const o: Record<string, Participant[]> = {};
-    agents.forEach(p => (o[p.sp || ""] ||= []).push(p));
-    return o;
-  }, [agents]);
-  const mean = (list: Participant[], s: string) => list.length ? list.reduce((a, p) => a + (p.dna?.w[s] || 0), 0) / list.length : 0;
-  const maxW = Math.max(1, ...signals.flatMap(s => M.species.map(sp => mean(bySp[sp] || [], s))));
-  const dead = 0, born = agents.filter(p => p.parents && p.parents.length).length;
 
-  // tree of life: root at the bottom centre, one branch per species fanning upward, founders as leaves
-  const W = 560, H = 420, cx = W / 2, cy = H - 40;
-  const S = M.species, ghosts = M.monkeys;
-  const leaf = (si: number, k: number, n: number, r: number) => {
-    const a = Math.PI * (0.12 + 0.76 * (si + (n === 1 ? 0.5 : (k + 0.5) / n) / 1) / S.length);
-    return [cx - Math.cos(a) * r, cy - Math.sin(a) * r * 0.95] as const;
-  };
+  const layout = useMemo(() => {
+    if (!T) return null;
+    const gens = Math.max(1, ...T.nodes.map(n => n.generation));
+    const W = 640, H = 460, padX = 40, padY = 34;
+    const byGen = new Map<number, Node[]>();
+    T.nodes.forEach(n => (byGen.get(n.generation) || byGen.set(n.generation, []).get(n.generation)!).push(n));
+    const pos = new Map<string, { x: number; y: number }>();
+    byGen.forEach((list, g) => {
+      list.sort((a, b) => a.slot - b.slot || a.name.localeCompare(b.name));
+      list.forEach((n, k) => {
+        // a slight spiral: each generation turns a little, so lineages read as rising strands
+        const t = (k + .5) / list.length, twist = (g - 1) * .07;
+        const x = padX + ((t + twist) % 1) * (W - 2 * padX);
+        const y = H - padY - (gens === 1 ? .5 : (g - 1) / (gens - 1)) * (H - 2 * padY);
+        pos.set(n.name, { x, y });
+      });
+    });
+    return { W, H, gens, pos };
+  }, [T]);
+
+  const drift = useMemo(() => {
+    if (!T) return [];
+    const gens = [...new Set(T.nodes.map(n => n.generation))].sort((a, b) => a - b);
+    return gens.map(g => {
+      const list = T.nodes.filter(n => n.generation === g);
+      const w: Record<string, number> = {};
+      signals.forEach(s => w[s] = list.reduce((a, n) => a + (n.dna?.weights?.[s] || 0), 0) / Math.max(1, list.length));
+      return { g, n: list.length, w };
+    });
+  }, [T, signals]);
+  const maxW = Math.max(1, ...drift.flatMap(d => Object.values(d.w)));
+  const last = G?.comparison?.[G.comparison.length - 1];
+  const alive = T ? T.nodes.filter(n => n.alive).length : 0, dead = T ? T.nodes.length - alive : 0;
+  const H = hot && T ? T.nodes.find(n => n.name === hot) : null;
+  const goCard = (name: string) => { const p = M.A.p.find(x => x.name === name); if (p) onPick(p.id); };
+
   return (
-    <section className="evo" aria-label="Evolution">
+    <section className="evo">
       <div className="evo-tree glass">
-        <header><span className="lbl">Tree of life · generation {gen}</span><span className="lbl faint">{agents.length} alive · {born} born · {dead} dead</span></header>
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <radialGradient id="rootg"><stop offset="0" stopColor="#9fd8ff" stopOpacity=".9" /><stop offset="1" stopColor="#9fd8ff" stopOpacity="0" /></radialGradient>
-          </defs>
-          {/* ghost tree: the monkeys, faint, mirrored on the far ring */}
-          {ghosts.map((g, k) => {
-            const a = Math.PI * (0.06 + 0.88 * (k + 0.5) / ghosts.length), r = 330;
-            const x = cx - Math.cos(a) * r, y = cy - Math.sin(a) * r * 0.95;
-            return <g key={g.id} opacity=".4">
-              <path d={`M${cx},${cy} Q${cx - Math.cos(a) * r * .45},${cy - 40} ${x},${y}`} fill="none" stroke={COLOR.monkey} strokeDasharray="2 5" />
-              <circle cx={x} cy={y} r={4} fill={COLOR.monkey} />
-            </g>;
-          })}
-          {/* species branches and founders */}
-          {S.map((sp, si) => {
-            const list = (bySp[sp] || []).slice().sort((a, b) => a.name.localeCompare(b.name)), col = SPECIES_COLOR[sp] || "#9aa4b8";
-            const [bx, by] = leaf(si, 0, 1, 120);
-            return <g key={sp}>
-              <path d={`M${cx},${cy} C${cx},${cy - 60} ${bx},${by + 50} ${bx},${by}`} fill="none" stroke={col} strokeWidth="3" opacity=".75" style={{ filter: `drop-shadow(0 0 6px ${col})` }} />
-              <text x={bx} y={by + 22} textAnchor="middle" fill={col} fontSize="11" fontWeight="600" letterSpacing="2">{M.A.species[sp]?.label.toUpperCase()}</text>
-              {list.map((p, k) => {
-                const [x, y] = leaf(si, k, list.length, 235), r = 5 + 6 * Math.max(0, Math.min(1.5, p.value / M.A.meta.capital)) ** 2 / 2.25;
-                const on = hot === p.id;
-                return <g key={p.id} style={{ cursor: "pointer" }} onClick={() => onPick(p.id)} onPointerEnter={() => setHot(p.id)} onPointerLeave={() => setHot(null)}>
-                  <path d={`M${bx},${by} Q${(bx + x) / 2},${by - 30} ${x},${y}`} fill="none" stroke={col} strokeWidth={on ? 2.5 : 1.5} opacity=".7" />
-                  <circle cx={x} cy={y} r={r + (on ? 3 : 0)} fill={col} style={{ filter: `drop-shadow(0 0 ${on ? 12 : 7}px ${col})` }} />
-                  <text x={x} y={y - r - 5} textAnchor="middle" fill="#dfe6f5" fontSize={on ? 12 : 9.5} fontWeight={on ? 600 : 400} opacity={on ? 1 : .6}>{on ? p.name : p.name.replace(/^.*-/, "")}</text>
-                </g>;
-              })}
-            </g>;
-          })}
-          <circle cx={cx} cy={cy} r={26} fill="url(#rootg)" />
-          <circle cx={cx} cy={cy} r={6} fill="#e7eefc" />
-          <text x={cx} y={cy + 24} textAnchor="middle" fill="#8b98b5" fontSize="10.5" letterSpacing="2">GENERATION {gen}</text>
-        </svg>
+        <header><span className="lbl">Tree of life{layout ? ` · ${layout.gens} generation${layout.gens > 1 ? "s" : ""}` : ""}</span>
+          <span className="lbl faint">{T ? `${alive} alive · ${T.nodes.length - 20 > 0 ? T.nodes.length - 20 : 0} born · ${dead} dead · ${T.evaluations.length} selections` : ""}</span></header>
+        {T?.evidence && <div className={"evidence" + (T.evidence.trim().toLowerCase() === "official" ? " ok" : "")}>{T.evidence === "official" ? "Official results: these count as evidence." : T.evidence}</div>}
+        {T === undefined ? <div className="empty">Loading…</div> : !T || !layout ? <div className="empty big-empty">The family tree starts with the first selection.</div> :
+          <svg viewBox={`0 0 ${layout.W} ${layout.H}`} preserveAspectRatio="xMidYMid meet">
+            {Array.from({ length: layout.gens }, (_, g) => {
+              const y = layout.H - 34 - (layout.gens === 1 ? .5 : g / (layout.gens - 1)) * (layout.H - 68);
+              return (g % Math.max(1, Math.round(layout.gens / 8)) === 0) && <g key={g}><line x1={30} x2={layout.W - 10} y1={y} y2={y} stroke="rgba(130,160,220,.06)" /><text x={4} y={y + 4} fill="#56627d" fontSize="9">G{g + 1}</text></g>;
+            })}
+            {T.nodes.filter(n => n.parents).flatMap(n => n.parents!.map((pa, k) => {
+              const a = layout.pos.get(pa), b = layout.pos.get(n.name); if (!a || !b) return null;
+              const on = !hot || hot === n.name || hot === pa;
+              return <path key={n.name + k} d={`M${a.x},${a.y} C${a.x},${(a.y + b.y) / 2} ${b.x},${(a.y + b.y) / 2} ${b.x},${b.y}`} fill="none"
+                stroke={n.alive ? spColor(n.species) : "#3a4153"} strokeOpacity={on ? (k ? .25 : .55) : .06} strokeWidth={k ? 1 : 1.6} />;
+            }))}
+            {T.nodes.map(n => {
+              const p = layout.pos.get(n.name)!, col = spColor(n.species), r = n.alive ? 4.5 : 3;
+              return <g key={n.name} style={{ cursor: "pointer" }} onPointerEnter={() => setHot(n.name)} onPointerLeave={() => setHot(null)} onClick={() => n.alive && goCard(n.name)}>
+                {n.alive && <circle cx={p.x} cy={p.y} r={r + 4} fill={col} opacity=".18" />}
+                <circle cx={p.x} cy={p.y} r={r} fill={n.alive ? col : "#2a303d"} stroke={n.immigrant ? "#fff" : n.alive ? "none" : "#4b5367"} strokeWidth={n.immigrant ? 1.4 : 1} />
+                {!n.alive && <path d={`M${p.x - 2},${p.y - 2}L${p.x + 2},${p.y + 2}M${p.x + 2},${p.y - 2}L${p.x - 2},${p.y + 2}`} stroke="#6f7686" strokeWidth=".8" />}
+              </g>;
+            })}
+          </svg>}
         <div className="evo-note">
-          {gen === 1 ? <>Selection has not started: all {agents.length} founders are alive. The weakest are removed and the strongest have offspring after the trial. The faint grey branches are the <b>ghost tree</b>: monkeys with the same rules and random picks. If evolved monkeys come to look like evolved agents, selection is luck, and this screen will say so.</>
-            : <>Ghost tree: monkeys evolved by the same process. If they look alike, selection is luck.</>}
+          {H ? <><b>{H.name}</b> · generation {H.generation}{H.immigrant ? " · immigrant" : ""}{H.parents ? ` · parents ${H.parents.join(" × ")}` : " · founder"} · born {H.born}
+            {H.death ? <> · <span className="down">died {H.died}</span>, ranked {H.death.rank}/{H.death.of}, {pct(H.death.vs_index)} vs index</> : <> · alive, €{nf(H.value)}</>}
+            {H.gene_delta?.weights && <> · genes vs parents: {Object.entries(H.gene_delta.weights).filter(([, v]) => Math.abs(v) >= 1).map(([k, v]) => `${sigLabel(M.A, k)} ${v > 0 ? "+" : ""}${nf(v)}`).join(", ") || "≈ same"}</>}</>
+            : <>Founders at the bottom; each generation rises. Lit dots are alive (tap for the card), grey crosses died at a selection, white rings are immigrants (fresh random DNA). Lines join parents and children.</>}
         </div>
-        {hot && M.byId[hot] && <div className="genetip" style={{ left: 16, bottom: 16 }}><b>{hot && M.byId[hot].name}</b> · {pct(M.byId[hot].ret)} · born {M.byId[hot].born} · {M.byId[hot].parents?.length ? "parents " + M.byId[hot].parents!.join(", ") : "founder"}</div>}
       </div>
 
       <div className="evo-drift glass">
-        <header><span className="lbl">Gene drift · what the population values</span><span className="lbl faint">mean DNA weight (%)</span></header>
-        <div className="heat" style={{ gridTemplateColumns: `110px repeat(${M.species.length}, 1fr) 1fr` }}>
+        <header><span className="lbl">Ghost tree · is selection beating luck?</span><span className="lbl faint">{G ? `${G.worlds.length} ghost worlds` : ""}</span></header>
+        {G === undefined ? <div className="empty">Loading…</div> : !G ? <div className="empty">No ghost worlds yet.</div> : !G.comparison.length ?
+          <div className="ghost-wait">No selection yet. The ghosts evolve with the agents: same rules, random picks.<br /><span className="faint">{G.note}</span></div> :
+          <GhostChart G={G} />}
+        {last && <div className={"verdict " + (last.agents_top5_beats_worlds >= .9 ? "up" : "")}>
+          Agents' top 5 beat <b className="num">{nf(last.agents_top5_beats_worlds * 10)}</b> of 10 ghost worlds at the last selection.
+          {last.agents_top5_beats_worlds < .9 ? " Not clearly better than luck yet." : " Clearly better than the ghosts so far."}
+        </div>}
+        <header style={{ marginTop: 6 }}><span className="lbl">Gene drift · what each generation values</span><span className="lbl faint">mean DNA weight (%)</span></header>
+        <div className="heat" style={{ gridTemplateColumns: `100px repeat(${Math.max(1, drift.length)}, minmax(14px, 1fr))` }}>
           <span />
-          {M.species.map(sp => <span key={sp} className="hh" style={{ color: SPECIES_COLOR[sp] }}>{M.A.species[sp]?.label}</span>)}
-          <span className="hh">Gen {gen}</span>
+          {drift.map(d => <span key={d.g} className="hh" title={`generation ${d.g}: ${d.n} agents`}>{drift.length > 12 ? (d.g % 5 === 1 ? d.g : "") : "G" + d.g}</span>)}
           {signals.map(s => {
             const ev = M.A.meta.evidence?.[s]?.status;
             return [
               <span key={s + "l"} className="hl" title={ev ? "evidence: " + ev : "evidence: not yet measured"}>{sigLabel(M.A, s)}{ev ? <i className={"ev " + ev} /> : null}</span>,
-              ...M.species.map(sp => { const v = mean(bySp[sp] || [], s); return <span key={s + sp} className="hc num" style={{ background: `color-mix(in srgb, ${SPECIES_COLOR[sp]} ${Math.round(v / maxW * 85)}%, transparent)` }} title={`${M.A.species[sp]?.label} · ${sigLabel(M.A, s)} ${nf(v, 1)}%`}>{v ? nf(v, 0) : ""}</span>; }),
-              (() => { const v = mean(agents, s); return <span key={s + "g"} className="hc num" style={{ background: `rgba(159,216,255,${v / maxW * .7})` }} title={`population ${nf(v, 1)}%`}>{v ? nf(v, 0) : ""}</span>; })(),
+              ...drift.map(d => <span key={s + d.g} className="hc num" style={{ background: `rgba(159,216,255,${d.w[s] / maxW * .75})` }} title={`G${d.g} · ${sigLabel(M.A, s)} ${nf(d.w[s], 1)}%`}>{drift.length <= 8 && d.w[s] ? nf(d.w[s], 0) : ""}</span>),
             ];
           })}
         </div>
-        <div className="evo-note">Columns grow one per generation as evolution runs: a colour drifting across a row means the arena is learning to value that signal. The dot beside a signal is its evidence status in the Signal Lab.</div>
-        <div className="row3 evo-stats">
-          <div><div className="lbl">Founders</div><div className="num">{agents.length}</div></div>
-          <div><div className="lbl">Species</div><div className="num">{M.species.length}</div></div>
-          <div><div className="lbl">Ghost monkeys</div><div className="num">{M.monkeys.length}</div></div>
-        </div>
+        <div className="evo-note">A colour drifting along a row means the arena is learning to value that signal. The dot beside a signal is its evidence status in the Lab.</div>
       </div>
     </section>
+  );
+}
+
+function GhostChart({ G }: { G: Null }) {
+  const C = G.comparison, W = 420, H = 150, m = 28;
+  const all = C.flatMap(c => [c.agents_top5_mean, ...c.ghosts_top5_mean]);
+  let lo = Math.min(0, ...all), hi = Math.max(0, ...all); if (hi - lo < .01) { hi += .005; lo -= .005; }
+  const X = (i: number) => m + (W - m - 6) * (C.length === 1 ? .5 : i / (C.length - 1)), Y = (v: number) => 8 + (H - 24) * (1 - (v - lo) / (hi - lo));
+  const band = C.map((c, i) => [i, Math.min(...c.ghosts_top5_mean), Math.max(...c.ghosts_top5_mean)] as const);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="ghostchart" preserveAspectRatio="xMidYMid meet">
+      <line x1={m} x2={W - 6} y1={Y(0)} y2={Y(0)} stroke="rgba(130,160,220,.25)" />
+      <text x={m - 4} y={Y(hi) + 8} textAnchor="end" fill="#56627d" fontSize="9">{pct(hi, 0)}</text>
+      <text x={m - 4} y={Y(lo)} textAnchor="end" fill="#56627d" fontSize="9">{pct(lo, 0)}</text>
+      {C.length > 1 && <polygon points={band.map(([i, , b]) => `${X(i)},${Y(b)}`).join(" ") + " " + band.slice().reverse().map(([i, a]) => `${X(i)},${Y(a)}`).join(" ")} fill={COLOR.luck} opacity=".18" />}
+      {C.length > 1 && <polyline points={C.map((c, i) => `${X(i)},${Y(c.agents_top5_mean)}`).join(" ")} fill="none" stroke={COLOR.index} strokeWidth="2" />}
+      {C.map((c, i) => <circle key={i} cx={X(i)} cy={Y(c.agents_top5_mean)} r="2.5" fill={COLOR.index}><title>{`${c.date}: agents top-5 ${pct(c.agents_top5_mean)} · ghosts ${pct(Math.min(...c.ghosts_top5_mean))} to ${pct(Math.max(...c.ghosts_top5_mean))}`}</title></circle>)}
+      <text x={W - 6} y={H - 3} textAnchor="end" fill="#56627d" fontSize="9">blue = agents' top 5 · grey = top 5 of each ghost world</text>
+    </svg>
   );
 }
