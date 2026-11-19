@@ -89,6 +89,21 @@ Current use is personal and non-commercial. List them with `python -m arena sour
 .venv\Scripts\python.exe -m pytest -q
 ```
 
+## ETF League (second league)
+
+Fictional money, euros, simulation only (no broker, no real orders, no advice). A frozen universe of 21 euro-listed
+accumulating ETFs (world, regions, countries, sectors, factors, bonds, gold, cash), monthly decisions with a 2-point
+band, two references (World ETF buy and hold, 60/40), 10 known strategies and 1,000 monkeys with the same rotation.
+Costs: 0.1% commission plus half a spread; tax: 28% on realised gains, shown apart. Rules: `rules/etf.json`;
+pre-registered shadow signals: `rules/etf_signals.json`; code: `arena/etf.py`. It runs at the end of the nightly job
+(results in the private archive under `etf/`). The live window starts at day zero (`etf/league.json`); the replay on
+past data is a technical rehearsal and never evidence.
+
+```
+.venv\Scripts\python.exe -m arena etf --archive ..\arena-arquivo --create   (once: sets day zero)
+.venv\Scripts\python.exe -m arena etf --archive ..\arena-arquivo
+```
+
 To see the site with the latest night: `.\open_site.ps1` (updates the archive and opens the site).
 
 ## Setup

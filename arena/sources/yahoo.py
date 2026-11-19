@@ -11,7 +11,7 @@ PRICE_COLUMNS = ["date", "ticker", "open", "high", "low", "close", "volume"]
 EVENT_COLUMNS = ["date", "ticker", "type", "value"]
 
 
-def fetch(tickers, start, end_incl, batch=20, attempts=4):
+def fetch(tickers, start, end_incl, batch=20, attempts=4, raw_symbols=False):
     """Real daily prices (not adjusted for dividends) and events, in long format.
 
     Requests in batches and retries the ones that failed (network and Yahoo fail now and then).
@@ -27,7 +27,7 @@ def fetch(tickers, start, end_incl, batch=20, attempts=4):
         size = batch if attempt == 0 else max(1, batch // (2 * attempt))
         received = set()
         for i in range(0, len(missing), size):
-            p, e = _fetch_batch(missing[i:i + size], start, end_incl)
+            p, e = _fetch_batch(missing[i:i + size], start, end_incl, raw_symbols)
             if len(p):
                 prices.append(p)
                 received |= set(p["ticker"])
@@ -39,10 +39,10 @@ def fetch(tickers, start, end_incl, batch=20, attempts=4):
     return p, e
 
 
-def _fetch_batch(tickers, start, end_incl):
+def _fetch_batch(tickers, start, end_incl, raw_symbols=False):
     import yfinance as yf
 
-    symbols = {config.yahoo_symbol(t): t for t in tickers}
+    symbols = {(t if raw_symbols else config.yahoo_symbol(t)): t for t in tickers}   # ETF symbols such as EUNL.DE are used as they are
     end = (pd.Timestamp(end_incl) + pd.Timedelta(days=1)).date().isoformat()
     try:
         d = yf.download(list(symbols), start=start, end=end, auto_adjust=False, actions=True,

@@ -1,0 +1,13 @@
+{
+ "version": "1.0",
+ "registered_on": "2026-11-19",
+ "note": "Pre-registration of the ETF League shadow signals, written before any observation. Only signals with strong or medium evidence in the portfolio catalogue. Credit spreads and the yield curve (alarms) are registered but not built yet: they need free macro data (FRED) and will be added as new ids with a later date. Shadow signals never change a decision. Evaluation: monthly rank IC (Spearman) over the 20 risk ETFs against the next month's return, times expected_sign. Gates (ETF league): at least 24 monthly observations, Newey-West t (lag 3) above 2, positive mean IC in at least 2 of 3 sub-periods. Never edited after the first observation; a changed hypothesis is a new id.",
+ "gates": {"min_months": 24, "min_nw_t": 2.0, "nw_lag": 3, "subperiods": 3, "min_same_sign_subperiods": 2},
+ "signals": [
+  {"id": "etf.mom_12_1", "family": "momentum", "expected_sign": 1, "horizon_days": 21, "evidence": "strong", "hypothesis": "Assets that rose most over the past 12 months, skipping the latest month, keep outperforming over the next month (time-series and cross-asset momentum)."},
+  {"id": "etf.mom_6m", "family": "momentum", "expected_sign": 1, "horizon_days": 21, "evidence": "strong", "hypothesis": "Assets with the best last 6 months keep outperforming over the next month."},
+  {"id": "etf.trend_10m", "family": "trend", "expected_sign": 1, "horizon_days": 21, "evidence": "strong", "hypothesis": "Assets trading above their 10-month average (distance in percent) outperform those below it."},
+  {"id": "etf.low_vol_12m", "family": "low_risk", "expected_sign": 1, "horizon_days": 21, "evidence": "strong", "hypothesis": "Assets with lower 12-month volatility (value = minus volatility) earn at least as much per unit of risk, so they rank higher than risky ones."},
+  {"id": "etf.short_reversal", "family": "reversal", "expected_sign": -1, "horizon_days": 21, "evidence": "medium", "hypothesis": "Last month's winners tend to give a little back next month (value = last month's return, expected sign -1)."}
+ ]
+}

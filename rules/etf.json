@@ -1,0 +1,59 @@
+{
+ "version": "1.0",
+ "registered_on": "2026-11-19",
+ "note": "ETF League (second league of the Arena). Fictional money, simulation only: no broker, no real orders, no advice. Rules frozen before the first live night; any change is logged in rules/changes.md and applies only going forward. Decisions at the close of the last trading day of each month (and once at day zero); orders fill at the next open. Technical rehearsal = the same rules replayed on past data; it is never evidence.",
+ "capital_eur": 100000,
+ "costs": {
+  "commission": 0.001,
+  "spread_half": {"world": 0.0005, "region": 0.0005, "country": 0.001, "sector": 0.001, "factor": 0.001, "bond": 0.0005, "gold": 0.0005, "cash": 0.0002},
+  "note": "0.1% commission per order plus half of a conservative ETF spread paid on every fill (assumptions, to be checked against real broker price lists)"
+ },
+ "tax": {"capital_gains": 0.28, "note": "28% on net realised gains per calendar year, shown apart: the value in the table is before tax, 'after tax' subtracts it. Rate to be confirmed on the official tax authority site."},
+ "band": 0.02,
+ "rehearsal_start": "2019-07-01",
+ "monkeys": 1000,
+ "success": {
+  "min_months": 12, "beat_monkeys_percentile": 0.95, "beat_world_after_costs_and_tax": true,
+  "fail_months": 24, "fail_drawdown": 0.25
+ },
+ "universe": [
+  {"ticker": "EUNL.DE", "name": "iShares Core MSCI World (Acc)", "class": "world", "role": "WORLD"},
+  {"ticker": "SXR8.DE", "name": "iShares Core S&P 500 (Acc)", "class": "region", "role": "US"},
+  {"ticker": "SXRT.DE", "name": "iShares Core EURO STOXX 50 (Acc)", "class": "region", "role": "EZ"},
+  {"ticker": "IS3N.DE", "name": "iShares Core MSCI EM IMI (Acc)", "class": "region", "role": "EM"},
+  {"ticker": "IUSN.DE", "name": "iShares MSCI World Small Cap (Acc)", "class": "factor", "role": "SMALL"},
+  {"ticker": "DBXJ.DE", "name": "Xtrackers MSCI Japan (1C)", "class": "country", "role": "JP"},
+  {"ticker": "DBXD.DE", "name": "Xtrackers DAX (1C)", "class": "country", "role": "DE"},
+  {"ticker": "XCHA.DE", "name": "Xtrackers CSI300 Swap (1C)", "class": "country", "role": "CN"},
+  {"ticker": "XDEQ.DE", "name": "Xtrackers MSCI World Quality (1C)", "class": "factor", "role": "QUAL"},
+  {"ticker": "QDVI.DE", "name": "iShares Edge MSCI USA Value Factor (Acc)", "class": "factor", "role": "VALUE"},
+  {"ticker": "QDVE.DE", "name": "iShares S&P 500 Information Technology (Acc)", "class": "sector", "role": "TECH"},
+  {"ticker": "QDVG.DE", "name": "iShares S&P 500 Health Care (Acc)", "class": "sector", "role": "HEALTH"},
+  {"ticker": "QDVH.DE", "name": "iShares S&P 500 Financials (Acc)", "class": "sector", "role": "FIN"},
+  {"ticker": "QDVF.DE", "name": "iShares S&P 500 Energy (Acc)", "class": "sector", "role": "ENERGY"},
+  {"ticker": "XDWS.DE", "name": "Xtrackers MSCI World Consumer Staples (1C)", "class": "sector", "role": "STAPLES"},
+  {"ticker": "XGLE.DE", "name": "Xtrackers II Eurozone Government Bond (1C)", "class": "bond", "role": "BOND_EZ"},
+  {"ticker": "SXRQ.DE", "name": "iShares Euro Govt Bond 7-10yr (Acc)", "class": "bond", "role": "BOND_MID"},
+  {"ticker": "EUNA.DE", "name": "iShares Core Global Aggregate Bond EUR Hedged (Acc)", "class": "bond", "role": "BOND_GLOBAL"},
+  {"ticker": "IBCI.DE", "name": "iShares Euro Inflation Linked Govt Bond (Acc)", "class": "bond", "role": "BOND_INFL"},
+  {"ticker": "4GLD.DE", "name": "Xetra-Gold (physical gold ETC, not a UCITS fund)", "class": "gold", "role": "GOLD"},
+  {"ticker": "XEON.DE", "name": "Xtrackers II EUR Overnight Rate Swap (1C)", "class": "cash", "role": "CASH"}
+ ],
+ "universe_frozen_on": "2026-11-19",
+ "references": [
+  {"id": "ref.world_hold", "name": "World ETF, buy and hold", "text": "100% World ETF, bought once and never traded again (the lazy test)"},
+  {"id": "ref.60_40", "name": "60/40", "text": "60% World ETF, 40% Eurozone government bonds, rebalanced monthly with the band"}
+ ],
+ "strategies": [
+  {"id": "s01.equal_core", "name": "Equal-weight core", "text": "1/N over World, Eurozone, Emerging, euro bonds, inflation-linked bonds, gold and cash", "evidence": "medium (DeMiguel et al. 2009: 1/N is hard to beat)"},
+  {"id": "s02.risk_parity", "name": "Risk parity", "text": "World, euro bonds, global bonds, inflation-linked bonds and gold weighted by 1 / 12-month volatility", "evidence": "medium"},
+  {"id": "s03.dual_momentum", "name": "Dual momentum", "text": "Best 12-month return among US, Eurozone, Emerging, Japan; if it does not beat cash, hold global bonds", "evidence": "strong (Antonacci; Moskowitz et al.)"},
+  {"id": "s04.trend_gtaa", "name": "10-month trend, five assets", "text": "1/5 each in US, Emerging, euro bonds, gold, World; a slice below its 10-month average moves to cash", "evidence": "strong (Faber 2007)"},
+  {"id": "s05.trend_world", "name": "10-month trend, World only", "text": "World ETF while above its 10-month average, cash otherwise", "evidence": "strong"},
+  {"id": "s06.sector_momentum", "name": "Sector momentum", "text": "Top 3 of 5 sectors by 6-month return, equal weight; cash if World is below its 10-month average", "evidence": "medium"},
+  {"id": "s07.low_vol", "name": "Low volatility", "text": "The 5 equity ETFs (sectors excluded) with the lowest 12-month volatility, equal weight", "evidence": "strong (low-risk anomaly)"},
+  {"id": "s08.factor_mix", "name": "Factor mix", "text": "Equal weight in Quality, Value and Small caps", "evidence": "medium"},
+  {"id": "s09.all_weather", "name": "All-weather mix", "text": "30% World, 40% 7-10y euro bonds, 15% gold, 15% cash", "evidence": "medium (long-run risk balance)"},
+  {"id": "s10.asset_momentum", "name": "All-asset momentum", "text": "Top 5 of the 20 risk assets by 12-1 month momentum; a slice with a negative 12-month return goes to cash", "evidence": "strong (cross-asset momentum)"}
+ ]
+}
