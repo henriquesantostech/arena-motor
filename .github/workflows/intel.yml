@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        reader: [finbert, gliner, embed, llm, embed-qwen3-0.6b-instr, embed-qwen3-4b]
+        reader: [finbert, gliner, embed, llm, embed-qwen3-0.6b, embed-qwen3-4b]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

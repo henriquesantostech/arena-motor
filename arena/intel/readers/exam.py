@@ -99,11 +99,59 @@ CHECKS = {"json_valid": ("json_valid_min", 1), "event_type_accuracy": ("event_ty
           "seconds_per_item": ("max_seconds_per_item", -1)}
 
 
-def run_exam(store, name, models, work, version="v1"):
+def recall_at(sims, target_idx, k):
+    """Share of questions (rows of sims) whose target column ranks within the first k."""
+    import numpy as np
+    hits = 0
+    for i, t in enumerate(target_idx):
+        order = np.argsort(-sims[i], kind="stable")
+        hits += t in order[:k]
+    return round(hits / len(target_idx), 3)
+
+
+def run_retrieval_exam(store, name, rc, models, work):
+    """Exam v2 for embedding readers: 40 questions against a corpus of 80 news items (targets + hard distractors)."""
+    import numpy as np
+    from .llama import Server
+    items = [json.loads(l) for l in (EXAM_DIR / "retrieval_v2.jsonl").read_text(encoding="utf-8").splitlines()]
+    meta = json.loads((EXAM_DIR / "exam_v2.json").read_text(encoding="utf-8"))
+    corpus = [it["target"] for it in items] + [it["distractor"] for it in items]
+    qp, dp = rc.get("query_prefix", ""), rc.get("doc_prefix", "")
+    t0 = time.monotonic()
+    with Server(models or "models", rc["file"], embedding=True, port=8091, ctx=2048,
+                pooling=rc.get("pooling", "mean")) as srv:
+        docs = np.array([v for i in range(0, len(corpus), 16) for v in srv.embed([dp + c for c in corpus[i:i + 16]], rc["dims"])])
+        qs = np.array([v for i in range(0, len(items), 16) for v in srv.embed([qp + it["query"] for it in items[i:i + 16]], rc["dims"])])
+        runtime = srv.runtime
+    secs = (time.monotonic() - t0) / (len(corpus) + len(items))
+    sims = qs @ docs.T
+    target = list(range(len(items)))
+    scores = {"recall_at_1": recall_at(sims, target, 1), "recall_at_3": recall_at(sims, target, 3),
+              "seconds_per_item": round(secs, 2)}
+    rules = meta["admission"]["embed"]
+    passed = {"recall_at_1": scores["recall_at_1"] >= rules["recall_at_1_min"],
+              "recall_at_3": scores["recall_at_3"] >= rules["recall_at_3_min"],
+              "seconds_per_item": scores["seconds_per_item"] <= rules["max_seconds_per_item"]}
+    ran = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    result = {"reader": "embed", "candidate": name if name != "embed" else None, "model": rc["model"],
+              "model_sha": rc.get("sha256"), "exam": "v2", "ran_at": ran, "items": len(items), "runtime": runtime,
+              "query_prefix": qp, "doc_prefix": dp, "scores": scores, "thresholds": rules, "passed": passed,
+              "admitted": all(passed.values()),
+              "first_hit": {it["id"]: int(np.argmax(sims[i])) for i, it in enumerate(items)}}
+    base = store.root / "exam" if store else Path(work or ".")
+    write_json(base / f"{name}-v2-{ran[:10]}.json", result)
+    return {"reader": name, "exam": "v2", "scores": scores, "admitted": result["admitted"]}
+
+
+def run_exam(store, name, models, work, version=None):
     """`name` is a pinned reader (llm, embed, ...) or a candidate from readers.json (e.g. llm-gemma4-e4b): a candidate
-    sits the same exam, with the same frozen thresholds, as the reader it would replace."""
-    items, meta = load(version)
+    sits the same exam, with the same frozen thresholds, as the reader it would replace. Embedding readers sit the
+    retrieval exam v2 (exam v1's same-topic test did not measure retrieval); the others sit exam v1."""
     reader, rc = reader_cfg(name)
+    version = version or ("v2" if reader == "embed" else "v1")
+    if version == "v2":
+        return run_retrieval_exam(store, name, rc, models, work)
+    items, meta = load(version)
     t0 = time.monotonic()
     rows = READERS[reader](_work_items(items), rc, models or "models")
     secs = (time.monotonic() - t0) / max(1, len(items))

@@ -248,3 +248,11 @@ def test_echoed_keys_are_redacted():
     from arena.intel.http import _is_key_param
     assert _is_key_param({"UserID": "X" * 36, "method": "GetData"}, "X" * 36)
     assert not _is_key_param({"method": "GetDataGetDataGetData"}, "GetDataGetDataGetData")
+
+
+def test_retrieval_exam_v2_frozen_and_recall():
+    from arena.intel.readers.exam import EXAM_DIR, recall_at
+    items = [json.loads(l) for l in (EXAM_DIR / "retrieval_v2.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert len(items) == 40 and len({it["id"] for it in items}) == 40
+    sims = np.array([[0.9, 0.1, 0.95], [0.2, 0.8, 0.1]])
+    assert recall_at(sims, [0, 1], 1) == 0.5 and recall_at(sims, [0, 1], 3) == 1.0
