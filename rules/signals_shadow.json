@@ -1,6 +1,6 @@
 {
- "version": "0.2",
- "date": "2026-11-14",
+ "version": "0.3",
+ "date": "2026-11-19",
  "note": "Pre-registration of the phase 2 shadow signals (design v2, rigour charter rule 3 and section 8.3). Written before any test on our data. Shadow signals never influence a decision; the Signal Lab may admit one only if every gate passes. Higher value = expected to do better, unless expected_sign is -1. Horizon in trading days, forward return measured from the next open. Signal ids follow the engine contract (docs/contracts.md §2): intel.<name>. A signal dated D uses only information published by the end of the previous trading day (New York), so the value exists before the engine's decision for D.",
  "gates": {
   "min_observations": 250,
@@ -182,6 +182,156 @@
    "data_note": "Daily World Brief (Qwen3.5-9B), stored once per day",
    "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
    "owner": "intel"
+  },
+  {
+   "id": "intel.lazy_prices_similarity",
+   "family": "filings_text",
+   "hypothesis": "Firms whose 10-K/10-Q text changes little from the same report a year earlier do better; large changes signal news the market prices slowly (Cohen, Malloy & Nguyen 2020, Journal of Finance, 'Lazy Prices').",
+   "expected_sign": 1,
+   "horizon_days": 63,
+   "data": [
+    "sec_edgar"
+   ],
+   "definition": "cosine similarity of word-count vectors (lower-case words of 3+ letters, numbers and markup removed) between the company's latest 10-K or 10-Q main document and the same form for the period one year earlier (period end 330-400 days before); value carried from the filing's dissemination until the next one",
+   "evidence_note": "Published long-short alpha about 30-60 bp a month, strongest in the risk-factor and MD&A sections; slow-moving, low turnover. Haircut 0.5 applies.",
+   "data_note": "Main documents fetched from EDGAR Archives; only the word-count vector and a SHA-256 fingerprint are kept (raw text by reference: permanent URL + fingerprint), like the GDELT files.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.mgmt_change_8k_30d",
+   "family": "filings_events",
+   "hypothesis": "8-K item 5.02 (departure or appointment of directors and officers) in the last 30 days marks management turnover, which on average precedes weaker returns.",
+   "expected_sign": -1,
+   "horizon_days": 21,
+   "data": [
+    "sec_edgar"
+   ],
+   "definition": "number of 8-K filings with item 5.02 disseminated in the last 30 calendar days",
+   "evidence_note": "Weak and mixed evidence; 5.02 also covers routine board and pay changes. Registered to measure, not because we expect admission.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.guidance_8k_llm_10d",
+   "family": "filings_events",
+   "hypothesis": "The tone of results, guidance and other disclosures (8-K items 2.02, 7.01, 8.01) as read by the admitted LLM reader predicts the next month's return.",
+   "expected_sign": 1,
+   "horizon_days": 21,
+   "data": [
+    "sec_edgar",
+    "reader:llm"
+   ],
+   "definition": "sum over 8-K documents with item 2.02, 7.01 or 8.01 disseminated in the last 10 calendar days of the LLM reading's direction x magnitude for the company",
+   "evidence_note": "Live only: the reading model was trained on text from after most of our history, so a rehearsal would leak the future.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.share_count_change_yoy",
+   "family": "capital_return",
+   "hypothesis": "Net share issuance predicts lower returns and net buybacks higher returns (Pontiff & Woodgate 2008; Daniel & Titman 2006).",
+   "expected_sign": -1,
+   "horizon_days": 63,
+   "data": [
+    "sec_xbrl"
+   ],
+   "definition": "log(shares outstanding, latest report) - log(shares outstanding reported about one year earlier, 330-400 days)",
+   "evidence_note": "One of the most robust anomalies in the literature; smaller in mega-caps.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.buyback_yield_ttm",
+   "family": "capital_return",
+   "hypothesis": "Companies spending more of their market value on buybacks do better.",
+   "expected_sign": 1,
+   "horizon_days": 63,
+   "data": [
+    "sec_xbrl"
+   ],
+   "definition": "payments for repurchase of common stock over the last four quarters (us-gaap PaymentsForRepurchaseOfCommonStock, TTM) / market value (shares outstanding x close)",
+   "evidence_note": "Overlaps with share_count_change_yoy; both measured, at most one admitted.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.dividend_change_yoy",
+   "family": "capital_return",
+   "hypothesis": "Dividend increases precede better returns and cuts worse ones (dividend signalling, post-announcement drift).",
+   "expected_sign": 1,
+   "horizon_days": 63,
+   "data": [
+    "sec_xbrl"
+   ],
+   "definition": "dividends declared per share in the latest quarter / the same quarter a year earlier - 1 (us-gaap CommonStockDividendsPerShareDeclared, quarterly durations only); 0 for stable payers; missing for non-payers",
+   "evidence_note": "Effect concentrated in cuts and initiations, which are rare in the S&P 100.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.earnings_within_10d",
+   "family": "risk",
+   "hypothesis": "Holding a stock into its results adds a large one-day move: absolute returns are higher in the 10 trading days that contain the release.",
+   "expected_sign": 1,
+   "horizon_days": 10,
+   "target": "abs_return",
+   "data": [
+    "sec_edgar"
+   ],
+   "definition": "1 if the next results release (previous 8-K item 2.02 date + 91 calendar days, or a later scheduled date when known) falls within the next 10 trading days, else 0",
+   "evidence_note": "Risk feature, not a return signal: tested against absolute forward returns. If admitted it informs position sizing and risk flags, never direction.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.announcement_reaction_60d",
+   "family": "surprise",
+   "hypothesis": "The price reaction to a results release measures the surprise without analyst forecasts; prices keep drifting in its direction (post-earnings-announcement drift, Bernard & Thomas 1989; Chan, Jegadeesh & Lakonishok 1996).",
+   "expected_sign": 1,
+   "horizon_days": 21,
+   "data": [
+    "sec_edgar",
+    "prices"
+   ],
+   "definition": "stock return minus the equal-weight universe return from the close before the 8-K item 2.02 dissemination to the close of the first full trading day after it; carried for 60 trading days",
+   "evidence_note": "Drift has weakened since the 2000s, especially in large caps.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
+  },
+  {
+   "id": "intel.macro_event_day",
+   "family": "risk",
+   "hypothesis": "US CPI, payrolls and FOMC decision days carry larger market-wide moves.",
+   "expected_sign": 1,
+   "horizon_days": 1,
+   "target": "market_flag",
+   "data": [
+    "fred_alfred",
+    "central_bank_rss"
+   ],
+   "definition": "market-level flag: 1 on trading days with a scheduled CPI or Employment Situation release (FRED release calendar) or an FOMC statement, else 0",
+   "evidence_note": "Not a cross-sectional signal: tested as the ratio of the universe's mean absolute return on flagged days to other days (gate: ratio > 1 with bootstrap t > 3). Used only as a risk flag and on the site.",
+   "registered_on": "2026-11-19",
+   "admission_test": "gates_v1 (design v2 §8.3, arena/lab.py GATES)",
+   "owner": "intel",
+   "source_of_idea": "Experience v3 §7 (2026-11-19)"
   }
  ]
 }
