@@ -16,6 +16,7 @@ export interface Participant {
   tax: number; cash: number; days: number; s: number[]; from: string; dna: Dna | null; hold: Holding[];
   next: { k: string; t: string; eur?: number | null; all?: boolean; why?: string; dd?: string; r?: Reason | null }[]; log: Move[];
   pctAll?: number | null; pctMirror?: number | null;
+  badge?: "provisional" | "merit" | "rehearsal" | null; badgeMissing?: string[] | null; generation?: number | null; immigrant?: boolean | null;
 }
 
 export interface Luck { n: number; date: string; p05: number | null; median: number | null; p95: number | null; best: number | null; s: ([number, number] | null)[] }
@@ -24,6 +25,7 @@ export interface Arena {
   meta: {
     mode: "trial" | "live"; dayZero: string; capital: number; rules: string; engine: string; updated: string | null; dates: string[];
     marks?: { d: string; k: string; label: string }[]; signals?: Record<string, string>;
+    generation?: number; meritEvidence?: string | null;
     evidence?: Record<string, { status: string | null; obs: number | null; ic: number | null; t: number | null }>;
   };
   fillsByDay?: Record<string, string[]>;
@@ -106,7 +108,13 @@ export function buildModel(A: Arena): Model {
   const off = (p: Participant) => Math.max(0, dates.indexOf(p.from));
   const valueAt = (p: Participant, i: number) => { const k = i - off(p); return k < 0 ? p.s[0] : p.s[Math.min(k, p.s.length - 1)]; };
   const retAt = (p: Participant, i: number) => valueAt(p, i) / (p.s[0] || 1) - 1;
-  const gapAt = (p: Participant, i: number) => p.type === "index" ? 0 : (index ? retAt(p, i) - retAt(index, i) : retAt(p, i));
+  // gap to the index over the participant's own life (newborns are compared from their birth, not from day zero)
+  const gapAt = (p: Participant, i: number) => {
+    if (p.type === "index") return 0;
+    if (!index) return retAt(p, i);
+    const o = off(p), base = valueAt(index, o) || 1;
+    return retAt(p, i) - (valueAt(index, Math.max(i, o)) / base - 1);
+  };
   const luckAt = (i: number): [number, number] | null => {
     if (i === 0) return null;
     const b = L?.s?.[i];

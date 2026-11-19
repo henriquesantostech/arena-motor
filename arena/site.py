@@ -64,6 +64,8 @@ INTEL_FILES = {
     "intel/site/alerts.json": "intel/alerts.json", "intel/site/docs.json": "intel/docs.json",
     "intel/lab/ic_provisional.json": "lab/ic_provisional.json", "intel/lab/mirror_book.json": "lab/mirror_book.json",
     "lab/report.json": "lab/report.json",
+    "evolution/tree.json": "evolution/tree.json", "evolution/null.json": "evolution/null.json",
+    "merit/report.json": "merit/report.json",
 }
 
 
@@ -167,6 +169,10 @@ def build_data(archive, days):
     inds = {n: indicators(n, series[n], index_series, p, monkeys, today[:4]) for n, p in state["participants"].items()}
     monkey_scores = [inds[n]["score"] for n in monkeys]
     prices = _prices(archive, last)
+    merit = _read_json(archive.root / "merit" / "report.json") or {}
+    merit_rows = merit.get("agents", {}) if isinstance(merit.get("agents"), dict) else {}
+    meta["meritEvidence"] = merit.get("evidence")
+    meta["generation"] = max([p.get("generation", 1) for p in state["participants"].values() if p["type"] == "agent"] or [1])
 
     out = []
     for name, p in state["participants"].items():
@@ -186,13 +192,16 @@ def build_data(archive, days):
             dna = {"w": dict(dna_in.get("weights", {})), "minHold": dna_in.get("min_hold_days"), "band": dna_in.get("rank_band"),
                    "picks": dna_in.get("n_holdings"), "maxW": dna_in.get("max_weight"), "review": dna_in.get("review_days"),
                    "stop": dna_in.get("stop_loss"), "brake": dna_in.get("brake")}
-        badge = label(ind, monkey_scores) if kind == "agent" else None
+        row = merit_rows.get(name) if kind == "agent" else None
+        badge = label(ind, monkey_scores, row) if kind == "agent" else None   # merit badge v2 (rules 1.2)
         out.append({
             "id": _slug(name), "name": name, "type": kind, "sp": sp_key.get(p["species"]),
             "born": p["born"], "parents": p.get("parents"), "copies": p.get("copies_management_of"),
             "value": ind["value"], "ret": ind["return"], "vsIdx": ind["vs_index"],
             "score": ind["score"], "beatsMonkeys": ind["beats_monkeys"],
             "merit": badge == "merit" if badge else None,
+            "badge": (row or {}).get("badge") or badge, "badgeMissing": (row or {}).get("badge_missing"),
+            "generation": p.get("generation", 1) if kind == "agent" else None, "immigrant": p.get("immigrant", False) if kind == "agent" else None,
             "vol": ind["volatility"], "mdd": ind["max_drawdown"], "fees": ind["costs"], "divs": ind["dividends"],
             "turnover": ind["turnover"], "hit": ind["hit_rate"], "closed": ind["closed_trades"],
             "tax": ind["estimated_tax"], "cash": round(p["cash"], 2), "days": ind["days"],
