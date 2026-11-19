@@ -1,0 +1,67 @@
+# Ask exam (rules/exam/ask_v1.json): runs the frozen 60 questions through the Ask, on the frozen snapshot in the
+# private archive, with the model calls sent through the site's own free Workers AI binding (/api/ask-llm, behind
+# the login). By hand only. Logs are public: only the summary numbers are printed; the full report (answers and
+# grades) is saved to the private archive under ask/exam_v1/runs/.
+name: ask-exam
+
+on:
+  workflow_dispatch:
+    inputs:
+      system:
+        description: "v2 = Ask v2; baseline = today's Ask (X4)"
+        type: choice
+        options: [v2, baseline]
+        default: v2
+      model:
+        description: "Ask v2 model(s), in order"
+        type: choice
+        options: ["gpt-oss-120b@workers-ai", "llama-3.3-70b@workers-ai", "gpt-oss-120b@workers-ai,llama-3.3-70b@workers-ai"]
+        default: "gpt-oss-120b@workers-ai"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ask-exam
+  cancel-in-progress: false
+
+jobs:
+  exam:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Engine (this repository)
+        uses: actions/checkout@v4
+
+      - name: Private archive
+        uses: actions/checkout@v4
+        with:
+          repository: henriquesantostech/arena-arquivo
+          path: archive
+          ssh-key: ${{ secrets.ARQUIVO_CHAVE }}
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Exam
+        env:
+          GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          ARENA_SESSION_KEY: ${{ secrets.ARENA_SESSION_KEY }}
+          ARENA_LOGIN: ${{ secrets.ARENA_ALLOWED_USERS || github.repository_owner }}
+        run: |
+          name="$(date -u +%Y%m%dT%H%M)-${{ inputs.system }}$( [ '${{ inputs.system }}' = v2 ] && echo "-${{ inputs.model }}" | tr ',@' '+_' )"
+          mkdir -p archive/ask/exam_v1/runs
+          extra=""; [ "${{ inputs.system }}" = baseline ] && extra="--baseline"
+          node site/scripts/ask-exam.mjs archive/ask/exam_v1 --remote https://arena-agents.pages.dev --model "${{ inputs.model }}" $extra --quiet --out "archive/ask/exam_v1/runs/$name.json"
+
+      - name: Save the report to the archive
+        working-directory: archive
+        run: |
+          git config user.name "arena-engine"
+          git config user.email "250372676+henriquesantostech@users.noreply.github.com"
+          git add ask/exam_v1/runs
+          git commit -q -m "ask exam run ${{ inputs.system }} ${{ inputs.model }}"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 15; done
+          exit 1

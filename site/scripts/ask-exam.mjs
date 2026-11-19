@@ -28,6 +28,50 @@ if (process.env.CF_ACCOUNT_ID && process.env.CF_AI_TOKEN) env.AI = {
   },
 };
 
+// --remote <site>: model calls go through the site's own Workers AI binding (/api/ask-llm, behind the login).
+// The session cookie is minted here from the same key the site uses (ARENA_SESSION_KEY or the OAuth secret).
+const remote = opt("--remote");
+if (remote) {
+  const { createHash, createHmac } = await import("node:crypto");
+  const key = process.env.ARENA_SESSION_KEY || createHash("sha256").update("arena-session|" + (process.env.GH_OAUTH_CLIENT_SECRET || "")).digest("base64url");
+  const login = (process.env.ARENA_LOGIN || "").split(/[,;\s]+/)[0], exp = Math.floor(Date.now() / 1000) + 3 * 3600;
+  if (!login || !process.env.GH_OAUTH_CLIENT_SECRET && !process.env.ARENA_SESSION_KEY) { console.error("STOP: no session key or login"); process.exit(1); }
+  const cookie = `arena_session=${login}.${exp}.${createHmac("sha256", key).update(`${login}.${exp}`).digest("base64url")}`;
+  env.AI = {
+    run: async (model, body) => {
+      for (let i = 0; i < 3; i++) {
+        const r = await fetch(remote.replace(/\/$/, "") + "/api/ask-llm", { method: "POST", redirect: "manual", headers: { Cookie: cookie, "Content-Type": "application/json" }, body: JSON.stringify({ model, body }) });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.result) return j.result;
+        if (r.status === 429) throw new Error("quota " + (j.error || ""));
+        if (i === 2 || r.status < 500) throw new Error(`${r.status} ${j.error || "no answer"}`);
+        await new Promise(res => setTimeout(res, 3000));
+      }
+    },
+  };
+}
+
+// --baseline: today's Ask (X4): browser BM25 retrieval over corpus.json + /api/ask (Llama 3.3 70B), mapped to a card.
+async function baseline(it) {
+  globalThis.fetch0 ||= globalThis.fetch;
+  const corpusFile = join(dir, "data", "corpus.json");
+  globalThis.fetch = async (u, o) => String(u).endsWith("data/corpus.json") ? new Response(readFileSync(corpusFile, "utf8")) : globalThis.fetch0(u, o);
+  const { search } = await import("../src/copilot.ts");
+  const { onRequestPost } = await import("../functions/api/ask.js");
+  const A = JSON.parse(readFileSync(join(dir, "data", "arena.json"), "utf8"));
+  const asOf = it.asOf || A.meta.dates[A.meta.dates.length - 1];
+  const passages = await search(it.q, asOf, 10);
+  const q = (it.history || []).length ? it.q : it.q;   // today's Ask has no memory
+  const r = await onRequestPost({ request: new Request("https://x/api/ask", { method: "POST", headers: { "Content-Type": "application/json", Cookie: "arena_session=exam" }, body: JSON.stringify({ q, asOf, passages: passages.map(p => ({ id: p.id, d: p.d, title: p.title, text: p.text })) }) }), env });
+  const j = await r.json();
+  if (j.error) return { kind: j.error === "quota" ? "limit" : "error", say: j.error, more: [], sources: [], show: [], follow: [] };
+  const byId = new Map(passages.map(p => [p.id, p]));
+  const go = p => p?.ref ? { agent: p.ref.open, date: p.ref.date, view: p.ref.lens } : null;
+  return { kind: "answer", say: j.text, more: [], visual: null, follow: [],
+    sources: j.cite.map(id => byId.get(id)).filter(Boolean).map(p => ({ label: p.title, kind: { participant: "agent", decision: "decision", day: "day", world: "news", standings: "ranking", about: "rules", people: "people", species: "rules" }[p.k] || p.k, go: go(p) })),
+    show: (j.actions || []).map(a => ({ label: a.type, go: { agent: a.id, date: a.d, view: a.lens } })), model: j.model };
+}
+
 // ---------- grading ----------
 const G = E.global, re = s => new RegExp(s, "i");
 const textOf = c => [c.say, ...(c.more || [])].join(" ");
@@ -80,11 +124,11 @@ const rows = [];
 for (const it of Q) {
   const t0 = Date.now();
   let c;
-  try { c = await answer({ q: it.q, asOf: it.asOf || null, history: it.history || [], lang: it.lang }, { store, env, models, mode: fast || !models.length ? "fast" : "ai" }); }
+  try { c = args.includes("--baseline") ? await baseline(it) : await answer({ q: it.q, asOf: it.asOf || null, history: it.history || [], lang: it.lang }, { store, env, models, mode: fast || !models.length ? "fast" : "ai" }); }
   catch (e) { c = { kind: "error", say: String(e.message || e), more: [], sources: [], show: [], follow: [] }; }
   const g = grade(it, c);
   rows.push({ id: it.id, level: it.level, ms: Date.now() - t0, tokens: c.trace?.tokens, model: c.model, ...g, card: c });
-  console.log(`${it.id} ${g.correct ? "OK " : "-- "}${g.clarity ? "c" : "."}${g.evidence ? "e" : "."}${g.noAdvice ? "" : " ADVICE"} ${((Date.now() - t0) / 1000).toFixed(1)}s ${g.why.join(" | ").slice(0, 160)}`);
+  if (!args.includes("--quiet")) console.log(`${it.id} ${g.correct ? "OK " : "-- "}${g.clarity ? "c" : "."}${g.evidence ? "e" : "."}${g.noAdvice ? "" : " ADVICE"} ${((Date.now() - t0) / 1000).toFixed(1)}s ${g.why.join(" | ").slice(0, 160)}`);
 }
 const share = (f, xs = rows) => xs.filter(f).length / Math.max(1, xs.length);
 const lat = rows.map(r => r.ms / 1000).sort((a, b) => a - b), q = p => lat[Math.min(lat.length - 1, Math.floor(p * lat.length))];
