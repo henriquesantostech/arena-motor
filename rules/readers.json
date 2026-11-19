@@ -89,6 +89,32 @@
    "doc_prefix": "",
    "version": "c1",
    "exam": "exam v1, 2026-11-16: same-topic retrieval 35% (< 70%): not admitted"
+  },
+  "embed-qwen3-0.6b-instr": {
+   "reader": "embed",
+   "role": "candidate for retrieval embeddings: same model with its documented instruction prompt (exam only until admitted)",
+   "model": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+   "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+   "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+   "license": "Apache 2.0",
+   "training_cutoff": "2025-06-05 (release date used as a conservative bound)",
+   "dims": 256,
+   "pooling": "last",
+   "doc_prefix": "Instruct: Given a financial or world news item, find items about the same kind of event\nQuery: ",
+   "version": "c2"
+  },
+  "embed-qwen3-4b": {
+   "reader": "embed",
+   "role": "candidate for retrieval embeddings, larger model (exam only until admitted)",
+   "model": "Qwen/Qwen3-Embedding-4B-GGUF",
+   "file": "Qwen3-Embedding-4B-Q4_K_M.gguf",
+   "sha256": "2b0cf8f17b4c723c27303015383c27ec4bf2d8314bb677d05e920dd70bb0f16b",
+   "license": "Apache 2.0",
+   "training_cutoff": "2025-06-05 (release date used as a conservative bound)",
+   "dims": 256,
+   "pooling": "last",
+   "doc_prefix": "Instruct: Given a financial or world news item, find items about the same kind of event\nQuery: ",
+   "version": "c1"
   }
  },
  "retired": {
