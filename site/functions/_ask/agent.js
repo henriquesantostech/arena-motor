@@ -72,7 +72,7 @@ function fastCard(C, P, U, kind = "answer", note) {
     sources: Object.values(P.sources).slice(0, 3), follow: P.follow, focus: P.focus, mode: "fast" });
 }
 
-function notesFor(U, C) {
+function notesFor(U, C, q) {
   const n = [];
   if (U.ghost.length && !U.agents.length) n.push(`No participant called ${U.ghost.join(", ")} exists. Participants are agents Arrow-01..04, Wave-01..04, Rock-01..04, Echo-01..04, Plumb-01..04, Monkey-01..10, the S&P 500 and the equal-weight benchmark.`);
   if (U.focusUsed.agent) n.push(`"it/they" refers to ${C.byId[U.agents[0]]?.name} (from the conversation).`);
@@ -102,7 +102,7 @@ export async function answer(req, { store, env, models = [], mode = "ai", budget
 
   let results = await Promise.all(U.plan.map(p => runTool(C, p.tool, p.args)));
   let P = pack(results);
-  const notes = notesFor(U, C);
+  const notes = notesFor(U, C, q);
 
   if (mode !== "ai" || !models.length) {
     if (U.advice) return card(C, { kind: "refuse", say: "I can't give investment advice: the agents trade simulated money, and a few days of results say very little.", more: P.leads.slice(0, 1), follow: ["Who is winning?", "What is the luck band?"], sources: Object.values(P.sources).slice(0, 2), mode: "fast" });
