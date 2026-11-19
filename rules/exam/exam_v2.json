@@ -1,0 +1,14 @@
+{
+ "version": "2",
+ "kind": "retrieval",
+ "frozen_on": "2026-11-19",
+ "note": "Frozen retrieval exam for the embedding reader. It replaces exam v1's same-topic test for retrieval only; exam v1 stays unchanged. 40 original synthetic question -> news item pairs, each with one hard distractor (same company with another event, or the same kind of event elsewhere). The corpus is the 80 texts. Written and frozen, with its thresholds, before any model was run on it. Never edit: a new exam is a new file.",
+ "metric": "for each question, rank the 80 texts by cosine similarity: recall@1 = share of questions whose target ranks first, recall@3 = within the first three",
+ "admission": {
+  "embed": {
+   "recall_at_1_min": 0.75,
+   "recall_at_3_min": 0.9,
+   "max_seconds_per_item": 1.0
+  }
+ }
+}
