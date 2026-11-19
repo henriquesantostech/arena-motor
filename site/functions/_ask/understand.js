@@ -69,7 +69,7 @@ export function understand(q, C, history = [], screen = {}) {
   const views = { journal: /\b(journal|newspaper|jornal)\b/, evolution: /\b(evolution|family tree|tree)\b/, world: /\b(world|globe|map)\b/, network: /\b(network|graph)\b/, people: /\b(people|insiders?|politicians?)\b/, lab: /\b(lab|evidence)\b/, race: /\b(race|ranking|podium)\b/, detail: /\b(holdings|portfolio|owns?|positions)\b/ };
   const view = Object.entries(views).find(([, re]) => re.test(s))?.[0];
   const isWh = /\b(who|what|why|how|which|when|where|is|are|does|did|do|can|quem|o que|porque|porquê|como|qual|quando|quién|qué|por qué|cómo|cuál)\b/.test(s);
-  const vague = q.trim().split(/s+/).length <= 6 && !agents.length && !companies.length && !species.length && !dates.length && !range && (pronoun || /^\s*(compare( them| these| those)?|and\??|how about|what about)\s*[.?!]*\s*$/.test(s))
+  const vague = q.trim().split(/\s+/).length <= 6 && !agents.length && !companies.length && !species.length && !dates.length && !range && (pronoun || /^\s*(compare( them| these| those)?|and\??|how about|what about)\s*[.?!]*\s*$/.test(s))
     && !/\b(market|agents|monkeys|index|s&p|everyone|anyone|all)\b/.test(s);
 
   // plan: which tools to call before asking the model
