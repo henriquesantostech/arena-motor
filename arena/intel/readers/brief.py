@@ -22,7 +22,7 @@ SCHEMA = {   # property order = generation order: the short, structured parts co
         "sectors": {"type": "array", "minItems": len(SECTORS), "maxItems": len(SECTORS), "items": {
             "type": "object", "properties": {
                 "sector": {"type": "string", "enum": SECTORS}, "score": {"type": "integer", "enum": [-2, -1, 0, 1, 2]},
-                "reason": {"type": "string", "maxLength": 160},
+                "reason": {"type": "string", "maxLength": 110},
                 "citations": {"type": "array", "maxItems": 3, "items": {"type": "string"}}},
             "required": ["sector", "score", "reason", "citations"], "additionalProperties": False}},
         "markets": {"type": "string", "maxLength": 400},
@@ -76,6 +76,18 @@ def _context(con, T):
     return "\n".join(lines), set(docs["doc_id"]) if len(docs) else set()
 
 
+def schema_for(ids):
+    """The answer schema with citations limited to the document ids in the context: the model cannot cite a document
+    it was not given (the 2026-11-17 brief invented ten)."""
+    import copy
+    sc = copy.deepcopy(SCHEMA)
+    if ids:
+        item = {"type": "string", "enum": sorted(ids)}
+        sc["properties"]["sectors"]["items"]["properties"]["citations"]["items"] = item
+        sc["properties"]["world"]["items"]["properties"]["citations"]["items"] = item
+    return sc
+
+
 def _salvage(raw):
     """Keep the complete leading parts of a cut-off answer (headline, then every whole sector object), so the
     sector scores survive; the brief is marked partial and the raw text kept for audit."""
@@ -119,7 +131,7 @@ def write_brief(store, models, T=None):
     con = store.connect()
     ctx, ids = _context(con, T)
     with Server(models or "models", rc["file"], port=8092, ctx=16384) as srv:
-        raw, timings = srv.chat(SYSTEM, f"Brief date (as of): {T}\n\n{ctx}", SCHEMA, max_tokens=2400)
+        raw, timings = srv.chat(SYSTEM, f"Brief date (as of): {T}\n\n{ctx}", schema_for(ids), max_tokens=3200)
         runtime = srv.runtime
     try:
         out = json.loads(raw)

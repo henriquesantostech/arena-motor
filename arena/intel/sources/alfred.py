@@ -41,12 +41,17 @@ def _store_vintages(ctx, rows, sha):
     """ALFRED rows are already vintaged: keep one row per (series, obs_date, vintage) not stored yet."""
     if not rows:
         return 0
-    have = set()
+    have, last = set(), {}
     if ctx.store.has("observations"):
         df = ctx.store.read("observations", "series_id = ?", [rows[0]["series_id"]])
         have = {(r.obs_date, r.vintage) for r in df.itertuples()}
+        for r in df.sort_values("vintage", kind="mergesort").itertuples():
+            last[r.obs_date] = r.value
+    # The query window starts a few days back, so ALFRED reports an older unchanged value with realtime_start = the
+    # window start: a new "vintage" every night with the same value. Only a changed value is a revision.
     out = [{**r, "recorded_at": ctx.now, "source_id": SOURCE_ID, "source_hash": sha}
-           for r in rows if (r["obs_date"], r["vintage"]) not in have]
+           for r in rows if (r["obs_date"], r["vintage"]) not in have
+           and not (r["obs_date"] in last and abs(last[r["obs_date"]] - r["value"]) < 1e-12)]
     return ctx.store.add("observations", out)
 
 

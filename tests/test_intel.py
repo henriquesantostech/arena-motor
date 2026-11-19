@@ -223,3 +223,28 @@ def test_rehearsal_uses_only_readers_without_future_knowledge():
 def test_country_aliases():
     from arena.intel.site_export import _country_code
     assert _country_code("America") == "US" and _country_code("China") == "CN" and _country_code("Narnia") is None
+
+
+def test_brief_citations_limited_to_context():
+    from arena.intel.readers.brief import SCHEMA, schema_for
+    sc = schema_for({"b", "a"})
+    assert sc["properties"]["world"]["items"]["properties"]["citations"]["items"]["enum"] == ["a", "b"]
+    assert "enum" not in SCHEMA["properties"]["world"]["items"]["properties"]["citations"]["items"]
+
+
+def test_alfred_skips_unchanged_values_with_a_new_window_vintage(tmp_path):
+    from arena.intel.sources.alfred import _store_vintages
+    store = Store(tmp_path / "arq")
+    ctx = SimpleNamespace(store=store, now="2026-11-17T14:00:00Z")
+    row = {"series_id": "fred:DFF", "entity_id": "country:US", "obs_date": "2026-01-05", "value": 2.81,
+           "vintage": "2026-11-06", "published_at": "2026-11-06T13:30:00Z"}
+    assert _store_vintages(ctx, [row], "s1") == 1
+    store.flush()
+    assert _store_vintages(ctx, [{**row, "vintage": "2026-11-07"}], "s2") == 0             # same value: skip
+    assert _store_vintages(ctx, [{**row, "vintage": "2026-11-08", "value": 2.9}], "s3") == 1  # revision
+
+
+def test_echoed_keys_are_redacted():
+    from arena.intel.http import _is_key_param
+    assert _is_key_param({"UserID": "X" * 36, "method": "GetData"}, "X" * 36)
+    assert not _is_key_param({"method": "GetDataGetDataGetData"}, "GetDataGetDataGetData")

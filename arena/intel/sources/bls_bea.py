@@ -46,8 +46,12 @@ def _bea(ctx):
     r, sha, _ = http.fetch(ctx.store, SOURCE_ID, "https://apps.bea.gov/api/data",
                            params={"UserID": key, "method": "GetData", "datasetname": "NIPA", "TableName": "T10101",
                                    "Frequency": "Q", "Year": f"{y - 1},{y}", "ResultFormat": "JSON"})
+    res = r.json().get("BEAAPI", {}).get("Results", {})
+    err = res.get("Error") if isinstance(res, dict) else None
+    if err:   # e.g. code 4 "UserId is not active": say so in the night report instead of a silent 0
+        raise RuntimeError(f"BEA error {err.get('APIErrorCode')}: {str(err.get('APIErrorDescription'))[:120]}")
     rows = []
-    for d in r.json().get("BEAAPI", {}).get("Results", {}).get("Data", []):
+    for d in res.get("Data", []):
         if d.get("LineNumber") not in ("1", "2"):   # 1 = real GDP growth, 2 = personal consumption
             continue
         q = d["TimePeriod"]
@@ -63,5 +67,8 @@ def ingest(ctx):
     out = {"bls": 0, "bea": 0}
     if date.fromisoformat(ctx.now[:10]).weekday() < 6:
         out["bls"] = _bls(ctx)
-    out["bea"] = _bea(ctx)
+    try:
+        out["bea"] = _bea(ctx)
+    except RuntimeError as e:
+        out["bea"], out["bea_error"] = 0, str(e)
     return out

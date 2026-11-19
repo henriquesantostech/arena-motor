@@ -91,8 +91,18 @@ def fetch(store, source_id, url, *, params=None, headers=None, timeout=60, day=N
     full = r.url if params else url
     if r.status_code != 200:
         return r, None, None
-    sha, path = store.put_raw(source_id, _strip_keys(full), r.content, r.headers.get("Content-Type", ""), day=day)
+    data = r.content
+    for v in (params or {}).values():   # some APIs (BEA) echo the key in the body: never archive it
+        if isinstance(v, str) and len(v) >= 16 and _is_key_param(params, v) and v.encode() in data:
+            data = data.replace(v.encode(), b"REDACTED")
+    sha, path = store.put_raw(source_id, _strip_keys(full), data, r.headers.get("Content-Type", ""), day=day)
     return r, sha, path
+
+
+def _is_key_param(params, value):
+    import re
+    return any(v == value and re.fullmatch(r"(api_key|apikey|registrationkey|UserID|token|key)", k, flags=re.I)
+               for k, v in params.items())
 
 
 def _strip_keys(url):
